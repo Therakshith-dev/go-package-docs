@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Go Methods & Receivers — Deep Guide</title>
+
+<style>
+:root {
+  --bg: #ffffff;
+  --text: #111111;
+  --accent: #ff3b30;
+  --muted: #666;
+  --code-bg: #0f1f17;
+  --keyword: #ff3b30;
+  --type: #007aff;
+  --string: #34c759;
+  --number: #af52de;
+  --comment: #5e6b7a;
+  --border: #e1e4e8;
+}
+
+body.dark {
+  --bg: #0d0d0f;
+  --text: #f5f5f7;
+  --accent: #ff453a;
+  --muted: #999;
+  --code-bg: #0b1a14;
+  --keyword: #ff453a;
+  --type: #4da3ff;
+  --string: #30d158;
+  --number: #bf5af2;
+  --comment: #8b9eb0;
+  --border: #2c2e33;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 60px 30px;
+  line-height: 1.7;
+  transition: 0.2s ease;
+}
+
+.container {
+  max-width: 1000px;
+  margin: auto;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+button {
+  background: transparent;
+  border: 1px solid var(--muted);
+  color: var(--text);
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+h1 { 
+  font-weight: 600; 
+  font-size: 2.2rem;
+  margin: 0;
+}
+
+h2 { 
+  margin-top: 70px; 
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+h3 {
+  font-weight: 500;
+  margin-top: 40px;
+  color: var(--accent);
+}
+
+.code-box {
+  font-family: Menlo, monospace;
+  background: var(--code-bg);
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+  white-space: pre;
+  overflow-x: auto;
+  font-size: 0.95rem;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.keyword { color: var(--keyword); }
+.type { color: var(--type); }
+.string { color: var(--string); }
+.number { color: var(--number); }
+.comment { color: var(--comment); }
+.muted { color: var(--muted); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 30px 0;
+  font-size: 0.95rem;
+}
+
+th {
+  text-align: left;
+  background: rgba(128,128,128,0.05);
+}
+
+td, th {
+  border: 1px solid var(--border);
+  padding: 12px;
+}
+
+ul, ol {
+  margin: 20px 0;
+}
+
+li {
+  margin: 8px 0;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 40px 0;
+}
+
+.highlight {
+  background: rgba(255,69,58,0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.note {
+  background: rgba(0,122,255,0.1);
+  border-left: 4px solid var(--type);
+  padding: 20px;
+  margin: 30px 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin: 30px 0;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const saved = localStorage.getItem("theme");
+  if (saved === "dark") document.body.classList.add("dark");
+
+  document.getElementById("theme-toggle").onclick = () => {
+    document.body.classList.toggle("dark");
+    localStorage.setItem(
+      "theme",
+      document.body.classList.contains("dark") ? "dark" : "light"
+    );
+  };
+});
+</script>
+
+</head>
+<body>
+
+<div class="container">
+
+<div class="topbar">
+  <h1>Go Methods & Receivers — Deep Guide</h1>
+  <button id="theme-toggle"> Theme</button>
+</div>
+
+<p class="muted" style="font-size: 1.2rem;">
+Complete guide to understanding receivers, methods, and the difference between functions and methods in Go.
+</p>
+
+<!-- ========================================================== -->
+<h2>1. Function vs Method — The Core Difference</h2>
+
+<p>
+In Go, the key distinction lies in the <span class="highlight">receiver</span> — the thing in parentheses before the function name.
+</p>
+
+<div class="grid">
+  <div class="card">
+    <h3 style="margin-top: 0; color: var(--type);"> Standalone Function</h3>
+    <div class="code-box" style="margin: 10px 0;">
+<span class="keyword">func</span> <span class="type">createToken</span>(userID <span class="type">int64</span>) (<span class="type">string</span>, <span class="type">error</span>) {
+    <span class="comment">// Called directly</span>
+}
+    </div>
+    <p><strong>Called as:</strong> <code>createToken(12345)</code></p>
+    <p><strong>Owned by:</strong> No one (package-level)</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top: 0; color: var(--accent);"> Method with Receiver</h3>
+    <div class="code-box" style="margin: 10px 0;">
+<span class="keyword">func</span> (<span class="type">u User</span>) <span class="type">createToken</span>() (<span class="type">string</span>, <span class="type">error</span>) {
+    <span class="comment">// Called on a User instance</span>
+}
+    </div>
+    <p><strong>Called as:</strong> <code>user.createToken()</code></p>
+    <p><strong>Owned by:</strong> <code>User</code> type</p>
+  </div>
+</div>
+
+<div class="note">
+  <strong> Mental Model:</strong> The receiver is just a special first parameter. These two are conceptually similar:
+  <div class="code-box" style="margin: 10px 0;">
+<span class="comment">// Method</span>
+func (u User) createToken() string
+
+<span class="comment">// Function equivalent</span>
+func createToken(u User) string
+  </div>
+  Go provides syntax sugar to make the first one feel more object-oriented.
+</div>
+
+<h2>2. What Exactly IS the Receiver? <span style="font-size: 0.9rem; color: var(--muted);">(The "x" in func (x) ...)</span></h2>
+
+<p>
+The receiver <strong>binds the function to a type</strong>. It tells Go: "this function belongs to this type."
+</p>
+
+<div class="code-box">
+<span class="keyword">type</span> <span class="type">User</span> <span class="keyword">struct</span> {
+    ID   <span class="type">int64</span>
+    Name <span class="type">string</span>
+    age  <span class="type">int</span>  <span class="comment">// unexported (private)</span>
+}
+
+<span class="comment">// Receiver (u User) binds this method to User</span>
+<span class="keyword">func</span> (<span class="type">u User</span>) <span class="type">greet</span>() <span class="type">string</span> {
+    <span class="keyword">return</span> <span class="string">"Hello, I'm "</span> + u.Name
+}
+
+<span class="comment">// Usage</span>
+user := User{ID: 1, Name: <span class="string">"Alice"</span>, age: 25}
+message := user.greet()  <span class="comment">// "Hello, I'm Alice"</span>
+</div>
+
+<p>
+<strong>Inside the method</strong>, <code>u</code> is a copy of the User struct you called the method on. You can access all fields, even unexported ones like <code>age</code>.
+</p>
+
+<h3>2.1 How Go "Knows" Which ID to Use</h3>
+
+<p>
+<strong class="highlight">Important:</strong> Go does <em>not</em> automatically know to use the ID field. You must explicitly access it:
+</p>
+
+<div class="code-box">
+<span class="comment">//  Wrong expectation - Go doesn't guess</span>
+func (u User) createToken() string {
+    <span class="comment">// There's no magic "id" variable</span>
+    return "token_" + ???  <span class="comment">// What goes here?</span>
+}
+
+<span class="comment">//  Correct - explicitly use u.ID</span>
+func (u User) createToken() string {
+    return <span class="string">"token_"</span> + fmt.Sprint(u.ID)  <span class="comment">// You tell Go which field</span>
+}
+</div>
+
+<p>
+When you call <code>user1.createToken()</code> and <code>user2.createToken()</code>, they produce different results because <code>u.ID</code> is different in each call — Go passes the specific instance as the receiver.
+</p>
+
+<h2>3. Two Types of Receivers</h2>
+
+<h3>3.1 Value Receiver <span style="color: var(--type);">(u User)</span></h3>
+
+<div class="code-box">
+<span class="keyword">func</span> (<span class="type">u User</span>) <span class="type">updateName</span>(newName <span class="type">string</span>) {
+    u.Name = newName  <span class="comment">//  Only modifies the COPY!</span>
+}
+
+<span class="keyword">func</span> main() {
+    user := User{Name: <span class="string">"John"</span>}
+    user.updateName(<span class="string">"Jane"</span>)
+    fmt.Println(user.Name)  <span class="comment">// Still "John" </span>
+}
+</div>
+
+<p>
+<strong>What happens:</strong> Go passes a <strong>copy</strong> of the struct. Any modifications only affect the copy.
+</p>
+
+<table>
+  <tr><th>Scenario</th><th>Value Receiver</th></tr>
+  <tr><td>Large struct (1MB)</td><td>Copied entirely — expensive!</td></tr>
+  <tr><td>Can modify?</td><td> No (only copy)</td></tr>
+  <tr><td>Nil check possible?</td><td> No (can't be nil)</td></tr>
+</table>
+
+<h3>3.2 Pointer Receiver <span style="color: var(--accent);">(u *User)</span></h3>
+
+<div class="code-box">
+<span class="keyword">func</span> (<span class="type">u *User</span>) <span class="type">updateName</span>(newName <span class="type">string</span>) {
+    u.Name = newName  <span class="comment">//  Modifies the original!</span>
+}
+
+<span class="keyword">func</span> main() {
+    user := &User{Name: <span class="string">"John"</span>}  <span class="comment">// Pointer</span>
+    <span class="comment">// Or: user := User{...}; (&user).updateName()</span>
+    user.updateName(<span class="string">"Jane"</span>)
+    fmt.Println(user.Name)  <span class="comment">// "Jane" </span>
+}
+</div>
+
+<p>
+<strong>What happens:</strong> Go passes a <strong>pointer</strong> to the original struct. Modifications affect the original.
+</p>
+
+<table>
+  <tr><th>Scenario</th><th>Pointer Receiver</th></tr>
+  <tr><td>Large struct (1MB)</td><td>Only pointer copied (8 bytes) — efficient!</td></tr>
+  <tr><td>Can modify?</td><td> Yes</td></tr>
+  <tr><td>Nil check possible?</td><td> Yes (<code>if u == nil</code>)</td></tr>
+</table>
+
+<h2>4. The Mental Model — Visualizing the Receiver</h2>
+
+<div class="code-box">
+<span class="comment">// What you write:</span>
+<span class="keyword">func</span> (<span class="type">u User</span>) <span class="type">greet</span>() { ... }
+
+<span class="comment">// What Go conceptually does:</span>
+<span class="keyword">func</span> <span class="type">greet</span>(u User) { ... }  <span class="comment">// First parameter magic</span>
+
+<span class="comment">// When you call:</span>
+alice.greet()
+
+<span class="comment">// Go does this internally:</span>
+greet(alice)  <span class="comment">// Passes alice as the first argument</span>
+</div>
+
+<p>
+The receiver is <strong>syntactic sugar</strong> for making the first parameter special. That's why you can access <code>u.ID</code> — it's just a parameter!
+</p>
+
+<h2>5. Common Patterns & Examples</h2>
+
+<h3>5.1 Getter Methods</h3>
+
+<div class="code-box">
+<span class="keyword">func</span> (<span class="type">u User</span>) <span class="type">GetID</span>() <span class="type">int64</span> {
+    <span class="keyword">return</span> u.ID  <span class="comment">// Expose unexported fields if needed</span>
+}
+
+<span class="keyword">func</span> (<span class="type">u User</span>) <span class="type">FullInfo</span>() <span class="type">string</span> {
+    <span class="keyword">return</span> fmt.Sprintf(<span class="string">"User #%d: %s"</span>, u.ID, u.Name)
+}
+</div>
+
+<h3>5.2 Setter Methods (always use pointer)</h3>
+
+<div class="code-box">
+<span class="keyword">func</span> (<span class="type">u *User</span>) <span class="type">SetName</span>(name <span class="type">string</span>) {
+    <span class="keyword">if</span> name == <span class="string">""</span> {
+        <span class="keyword">return</span>  <span class="comment">// Validation</span>
+    }
+    u.Name = name
+}
+
+<span class="keyword">func</span> (<span class="type">u *User</span>) <span class="type">SetAge</span>(age <span class="type">int</span>) <span class="type">error</span> {
+    <span class="keyword">if</span> age < 0 {
+        <span class="keyword">return</span> fmt.Errorf(<span class="string">"invalid age: %d"</span>, age)
+    }
+    u.age = age  <span class="comment">// Setting unexported field</span>
+    <span class="keyword">return</span> <span class="keyword">nil</span>
+}
+</div>
+
+<h3>5.3 Methods on Any Type</h3>
+
+<p>
+Receivers aren't just for structs — they work with any type:
+</p>
+
+<div class="code-box">
+<span class="keyword">type</span> <span class="type">UserID</span> <span class="type">int64</span>
+
+<span class="keyword">func</span> (<span class="type">id UserID</span>) <span class="type">IsValid</span>() <span class="type">bool</span> {
+    <span class="keyword">return</span> id > 0
+}
+
+<span class="keyword">type</span> <span class="type">UserList</span> []User
+
+<span class="keyword">func</span> (<span class="type">list UserList</span>) <span class="type">FindByName</span>(name <span class="type">string</span>) *User {
+    <span class="keyword">for</span> _, u := <span class="keyword">range</span> list {
+        <span class="keyword">if</span> u.Name == name {
+            <span class="keyword">return</span> &u
+        }
+    }
+    <span class="keyword">return</span> <span class="keyword">nil</span>
+}
+</div>
+
+<h2>6. When to Use Which Receiver</h2>
+
+<table>
+  <tr><th>Use Value Receiver (u Type)</th><th>Use Pointer Receiver (u *Type)</th></tr>
+  <tr><td>Small, immutable types</td><td>Need to modify the struct</td></tr>
+  <tr><td>Methods that don't modify</td><td>Large structs (avoid copying)</td></tr>
+  <tr><td>Basic types, small structs</td><td>Methods that should handle nil</td></tr>
+  <tr><td>type MyString string</td><td>When in doubt (consistency)</td></tr>
+</table>
+
+<div class="note">
+  <strong> Rule of Thumb:</strong> If you're not sure, use pointer receiver. It's more flexible and consistent. The only time you <em>must</em> use value receiver is when implementing certain interfaces that require it.
+</div>
+
+<h2>7. Real-World Example — HTTP Handler</h2>
+
+<div class="code-box">
+<span class="keyword">type</span> <span class="type">UserService</span> <span class="keyword">struct</span> {
+    db     *sql.DB
+    logger *log.Logger
+    cache  *redis.Client
+}
+
+<span class="comment">// Method with receiver — can access service dependencies</span>
+<span class="keyword">func</span> (<span class="type">s *UserService</span>) <span class="type">HandleGetUser</span>(w http.ResponseWriter, r *http.Request) {
+    userID := r.URL.Query().Get(<span class="string">"id"</span>)
+    
+    <span class="comment">// s.db, s.logger, s.cache all available!</span>
+    user, err := s.db.FindUser(userID)
+    <span class="keyword">if</span> err != <span class="keyword">nil</span> {
+        s.logger.Printf(<span class="string">"Error: %v"</span>, err)
+        w.WriteHeader(500)
+        <span class="keyword">return</span>
+    }
+    
+    json.NewEncoder(w).Encode(user)
+}
+
+<span class="keyword">func</span> main() {
+    service := &UserService{
+        db:     connectDB(),
+        logger: log.New(),
+        cache:  connectRedis(),
+    }
+    
+    <span class="comment">// Method is bound to this specific service instance</span>
+    http.HandleFunc(<span class="string">"/user"</span>, service.HandleGetUser)
+}
+</div>
+
+<h2>8. Common Mistakes</h2>
+
+<h3>Mistake #1: Forgetting that value receivers get copies</h3>
+
+<div class="code-box">
+<span class="comment">//  Bug: This doesn't work</span>
+func (u User) SetID(id int64) {
+    u.ID = id  <span class="comment">// Only modifies copy!</span>
+}
+
+<span class="comment">//  Fix: Use pointer</span>
+func (u *User) SetID(id int64) {
+    u.ID = id
+}
+</div>
+
+<h3>Mistake #2: Nil pointer dereference</h3>
+
+<div class="code-box">
+<span class="comment">//  Bug: What if u is nil?</span>
+func (u *User) GetName() string {
+    return u.Name  <span class="comment">// Panic if u == nil!</span>
+}
+
+<span class="comment">//  Safe version</span>
+func (u *User) GetName() string {
+    if u == nil {
+        return <span class="string">""</span>
+    }
+    return u.Name
+}
+</div>
+
+<h3>Mistake #3: Mixing receiver types inconsistently</h3>
+
+<div class="code-box">
+<span class="keyword">type</span> <span class="type">User</span> <span class="keyword">struct</span> { ... }
+
+<span class="comment">//  Inconsistent — confusing</span>
+func (u User) GetName() string    { ... }  <span class="comment">// value</span>
+func (u *User) SetName(n string)  { ... }  <span class="comment">// pointer</span>
+
+<span class="comment">//  Better — pick one and be consistent</span>
+<span class="comment">// Usually: use pointer for all methods if any method needs it</span>
+func (u *User) GetName() string    { ... }
+func (u *User) SetName(n string)   { ... }
+</div>
+
+<h2>9. Interface Implementation</h2>
+
+<p>
+Methods determine whether a type implements an interface:
+</p>
+
+<div class="code-box">
+<span class="keyword">type</span> <span class="type">Namer</span> <span class="keyword">interface</span> {
+    Name() string
+}
+
+<span class="comment">// This method makes *User implement Namer</span>
+<span class="keyword">func</span> (<span class="type">u *User</span>) <span class="type">Name</span>() <span class="type">string</span> {
+    <span class="keyword">return</span> u.Name
+}
+
+<span class="comment">// Usage:</span>
+<span class="keyword">var</span> n Namer = &User{Name: <span class="string">"Alice"</span>}  <span class="comment">//  Works</span>
+<span class="comment">// var n Namer = User{Name: "Alice"}  //  Doesn't work</span>
+</div>
+
+<p>
+<strong>Important:</strong> The method's receiver type determines what implements the interface. <code>*User</code> implements <code>Namer</code>, but <code>User</code> does not (unless you also define the method with a value receiver).
+</p>
+
+<h2>10. Summary — Receiver Cheat Sheet</h2>
+
+<table>
+  <tr><th>Syntax</th><th>Meaning</th><th>Use Case</th></tr>
+  <tr><td><code>func (t Type) Method()</code></td><td>Value receiver (copy)</td><td>Read-only, small types</td></tr>
+  <tr><td><code>func (t *Type) Method()</code></td><td>Pointer receiver</td><td>Modifications, large types, nil handling</td></tr>
+  <tr><td><code>func (t Type) get()</code></td><td>Getter (usually value)</td><td>Safe read access</td></tr>
+  <tr><td><code>func (t *Type) set()</code></td><td>Setter (must be pointer)</td><td>Modifying fields</td></tr>
+</table>
+
+<div class="note">
+  <strong> Key Takeaway:</strong> The receiver <code>(x Type)</code> is just a special parameter that gives the function access to a specific instance of a type. Go doesn't "know" anything automatically — you explicitly use <code>x.Field</code> to access data. The receiver simply determines which instance's data you're working with.
+</div>
+
+<hr />
+
+
+
+<p class="muted" style="text-align: center; margin-top: 50px;">
+  &169; Rakshith
+</p>
+
+</div>
+</body>
+</html>

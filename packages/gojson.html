@@ -41,7 +41,7 @@ body {
 }
 
 .container {
-  max-width: 850px;
+  max-width: 900px;
   margin: auto;
 }
 
@@ -61,7 +61,7 @@ button {
 }
 
 h1 { font-weight: 600; }
-h2 { margin-top: 50px; font-weight: 500; }
+h2 { margin-top: 60px; font-weight: 500; }
 
 .code-box {
   font-family: Menlo, monospace;
@@ -79,6 +79,19 @@ h2 { margin-top: 50px; font-weight: 500; }
 .string { color: var(--string); }
 .number { color: var(--number); }
 .muted { color: var(--muted); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+td, th {
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  padding: 8px;
+}
+body.dark td, body.dark th {
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
 
 </style>
 
@@ -108,15 +121,20 @@ document.addEventListener("DOMContentLoaded", () => {
 </div>
 
 <p class="muted">
-Complete internal reference for Go JSON handling.
+Complete backend-level reference for Go JSON handling.
 </p>
 
-<h2>1. Marshal — Struct → JSON</h2>
+<!-- ========================================================== -->
+<h2>1. json.Marshal()</h2>
+
+<p>
+Converts a Go value → JSON text (returned as <span class="type">[]byte</span>).
+</p>
 
 <div class="code-box">
-<span class="keyword">type</span> <span class="type">User</span> <span class="keyword">struct</span> {
-  ID   <span class="type">int</span>    <span class="string">`json:"id"`</span>
-  Name <span class="type">string</span> <span class="string">`json:"name"`</span>
+type User struct {
+  ID   int    `json:"id"`
+  Name string `json:"name"`
 }
 
 u := User{ID: 1, Name: "Rak"}
@@ -125,13 +143,34 @@ jsonBytes, err := json.Marshal(u)
 </div>
 
 <p>
-Marshal converts a Go struct into JSON bytes.
-Always returns <span class="type">[]byte</span>.
+Output:
 </p>
+
+<div class="code-box">
+{"id":1,"name":"Rak"}
+</div>
+
+<p>
+Internally:
+</p>
+
+<table>
+<tr><th>Go Type</th><th>JSON Output</th></tr>
+<tr><td>int</td><td>number</td></tr>
+<tr><td>string</td><td>string</td></tr>
+<tr><td>bool</td><td>true/false</td></tr>
+<tr><td>slice</td><td>array</td></tr>
+<tr><td>map</td><td>object</td></tr>
+</table>
 
 ---
 
-<h2>2. Unmarshal — JSON → Struct</h2>
+<h2>2. json.Unmarshal()</h2>
+
+<p>
+Converts JSON text → Go struct.
+Requires pointer.
+</p>
 
 <div class="code-box">
 var u User
@@ -139,73 +178,190 @@ err := json.Unmarshal(jsonBytes, &u)
 </div>
 
 <p>
-Unmarshal requires a pointer so it can modify the struct.
+If JSON type mismatches Go type → error.
 </p>
+
+Example error:
+</p>
+
+<div class="code-box">
+json: cannot unmarshal string into Go struct field User.ID of type int
+</div>
 
 ---
 
-<h2>3. Struct Tags</h2>
+<h2>3. json.NewDecoder()</h2>
+
+<p>
+Used for reading JSON from a stream (HTTP body, file, socket).
+</p>
 
 <div class="code-box">
-ID int <span class="string">`json:"user_id"`</span>
+err := json.NewDecoder(req.Body).Decode(&u)
+</div>
+
+<p>
+Used in HTTP handlers.
+</p>
+
+Example full handler:
+</p>
+
+<div class="code-box">
+func handleUser(res http.ResponseWriter, req *http.Request) {
+
+  var input User
+
+  err := json.NewDecoder(req.Body).Decode(&input)
+  if err != nil {
+    res.WriteHeader(400)
+    return
+  }
+
+}
+</div>
+
+---
+
+<h2>4. json.NewEncoder()</h2>
+
+<p>
+Used to write JSON directly to HTTP response.
+</p>
+
+<div class="code-box">
+res.Header().Set("Content-Type", "application/json")
+json.NewEncoder(res).Encode(u)
+</div>
+
+<p>
+This automatically:
+</p>
+
+- Marshals struct  
+- Writes JSON to response  
+- Adds newline  
+
+---
+
+<h2>5. json.MarshalIndent()</h2>
+
+<p>
+Pretty prints JSON.
+</p>
+
+<div class="code-box">
+pretty, _ := json.MarshalIndent(u, "", "  ")
+fmt.Println(string(pretty))
+</div>
+
+Output:
+</div>
+
+<div class="code-box">
+{
+  "id": 1,
+  "name": "Rak"
+}
+</div>
+
+---
+
+<h2>6. Struct Tags</h2>
+
+<div class="code-box">
+ID int `json:"user_id"`
 </div>
 
 <p>
 Changes JSON key name.
-Without tag, JSON key becomes the struct field name.
 </p>
 
----
-
-<h2>4. omitempty</h2>
-
-<div class="code-box">
-Name string <span class="string">`json:"name,omitempty"`</span>
-</div>
-
-<p>
-If value is zero-value, field will not appear in JSON output.
-</p>
-
----
-
-<h2>5. json:"-" (Ignore Field)</h2>
-
-<div class="code-box">
-Password string <span class="string">`json:"-"`</span>
-</div>
-
-<p>
-Field is completely ignored in both Marshal and Unmarshal.
-</p>
-
----
-
-<h2>6. ,string Modifier</h2>
-
-<div class="code-box">
-ID int <span class="string">`json:"id,string"`</span>
-</div>
-
-<p>
-Allows JSON to contain:
+Without tag:
 </p>
 
 <div class="code-box">
-{
-  <span class="string">"id"</span>: <span class="string">"200"</span>
-}
+{"ID":1}
 </div>
 
-<p>
-And converts string → int automatically.
-</p>
+With tag:
+</div>
+
+<div class="code-box">
+{"user_id":1}
+</div>
 
 ---
 
-<h2>7. Zero Values</h2>
+<h2>7. omitempty</h2>
+
+<div class="code-box">
+Name string `json:"name,omitempty"`
+</div>
+
+If empty string → field removed.
+
+Example:
+</div>
+
+<div class="code-box">
+User{ID:1, Name:""} → {"id":1}
+</div>
+
+---
+
+<h2>8. json:"-"</h2>
+
+<div class="code-box">
+Password string `json:"-"`
+</div>
+
+Never appears in JSON.
+Used for:
+- Password hash
+- Internal fields
+
+---
+
+<h2>9. ,string modifier</h2>
+
+<div class="code-box">
+ID int `json:"id,string"`
+</div>
+
+Allows this JSON:
+
+<div class="code-box">
+{"id":"200"}
+</div>
+
+Converts string → int automatically.
+
+---
+
+<h2>10. map[string]any</h2>
+
+<div class="code-box">
+var data map[string]any
+json.Unmarshal(jsonBytes, &data)
+</div>
+
+Important:
+
+All numbers become float64.
+
+<div class="code-box">
+age := data["age"].(float64)
+</div>
+
+Use struct instead for strict typing.
+
+---
+
+<h2>11. Zero Values</h2>
 
 <table>
+<tr><th>Type</th><th>Zero Value</th></tr>
 <tr><td>int</td><td>0</td></tr>
 <tr><td>string</td><td>""</td></tr>
 <tr><td>bool</td><td>false</td></tr>
@@ -213,133 +369,114 @@ And converts string → int automatically.
 <tr><td>map</td><td>nil</td></tr>
 </table>
 
-<p>
-Missing JSON fields become zero values.
-</p>
+Missing JSON field → zero value.
 
 ---
 
-<h2>8. Slices</h2>
+<h2>12. Slices & null vs []</h2>
 
 <div class="code-box">
-Tags []string <span class="string">`json:"tags"`</span>
-</div>
-
-JSON must look like:
-
-<div class="code-box">
-{
-  "tags": ["go", "backend"]
+type T struct {
+  Tags []string `json:"tags"`
 }
 </div>
 
-nil slice → null  
-empty slice → []
-
-Important difference.
-
----
-
-<h2>9. map[string]any</h2>
-
-<div class="code-box">
-var data map[string]any
-json.Unmarshal(jsonBytes, &data)
+Case 1:
 </div>
 
-<p>
-JSON numbers become <span class="type">float64</span> in generic maps.
-</p>
+<div class="code-box">
+T{Tags:nil} → {"tags":null}
+</div>
+
+Case 2:
+</div>
+
+<div class="code-box">
+T{Tags:[]string{}} → {"tags":[]}
+</div>
+
+Difference matters in APIs.
 
 ---
 
-<h2>10. Disallow Unknown Fields</h2>
+<h2>13. DisallowUnknownFields()</h2>
 
 <div class="code-box">
-decoder := json.NewDecoder(reader)
+decoder := json.NewDecoder(req.Body)
 decoder.DisallowUnknownFields()
-decoder.Decode(&u)
+err := decoder.Decode(&u)
 </div>
 
-<p>
-For strict APIs. Rejects unexpected keys.
-</p>
+Rejects unexpected keys.
+Used in production APIs.
 
 ---
 
-<h2>11. MarshalIndent</h2>
-
-<div class="code-box">
-pretty, _ := json.MarshalIndent(u, "", "  ")
-</div>
-
-<p>
-Creates formatted JSON for debugging.
-</p>
-
----
-
-<h2>12. Field Must Be Exported</h2>
+<h2>14. Exported Fields Only</h2>
 
 <div class="code-box">
 type User struct {
   ID int
-  id int  // ignored
+  name string
 }
 </div>
 
-<p>
-JSON only sees capitalized fields.
-</p>
+name ignored because lowercase.
 
 ---
 
-<h2>13. Duplicate JSON Keys</h2>
+<h2>15. Duplicate Keys</h2>
 
 <div class="code-box">
 {"id":1,"id":2}
 </div>
 
-<p>
-Last value wins.
-Final ID = 2.
-</p>
+Result:
+</div>
+
+<div class="code-box">
+ID = 2
+</div>
+
+Last wins.
 
 ---
 
-<h2>14. Nested Struct</h2>
+<h2>16. Nested Struct</h2>
 
 <div class="code-box">
 type Profile struct {
-  Age int <span class="string">`json:"age"`</span>
+  Age int `json:"age"`
 }
 
 type User struct {
-  ID int <span class="string">`json:"id"`</span>
-  Profile Profile <span class="string">`json:"profile"`</span>
+  ID int `json:"id"`
+  Profile Profile `json:"profile"`
 }
 </div>
 
 JSON:
+</div>
 
 <div class="code-box">
 {
-  "id": 1,
-  "profile": { "age": 21 }
+  "id":1,
+  "profile":{"age":21}
 }
 </div>
 
 ---
 
-<h2>15. Mental Model</h2>
+<h2>17. Summary Mental Model</h2>
 
-<p>
-JSON object → struct or map  
-JSON array → slice  
-JSON string → string  
-JSON number → float64 (generic) or int (typed struct)  
-JSON boolean → bool  
-</p>
+<table>
+<tr><th>JSON</th><th>Go</th></tr>
+<tr><td>object</td><td>struct / map</td></tr>
+<tr><td>array</td><td>slice</td></tr>
+<tr><td>string</td><td>string</td></tr>
+<tr><td>number</td><td>int/float64</td></tr>
+<tr><td>true/false</td><td>bool</td></tr>
+</table>
 
 ---
 

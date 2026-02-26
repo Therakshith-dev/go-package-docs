@@ -6,42 +6,13 @@
 <title>Go Methods & Receivers â€” Deep Guide</title>
 
 <style>
-:root {
-  --bg: #ffffff;
-  --text: #111111;
-  --accent: #ff3b30;
-  --muted: #666;
-  --code-bg: #0f1f17;
-  --keyword: #ff3b30;
-  --type: #007aff;
-  --string: #34c759;
-  --number: #af52de;
-  --comment: #5e6b7a;
-  --border: #e1e4e8;
-}
-
-body.dark {
-  --bg: #0d0d0f;
-  --text: #f5f5f7;
-  --accent: #ff453a;
-  --muted: #999;
-  --code-bg: #0b1a14;
-  --keyword: #ff453a;
-  --type: #4da3ff;
-  --string: #30d158;
-  --number: #bf5af2;
-  --comment: #8b9eb0;
-  --border: #2c2e33;
-}
-
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  background: #0d0d0f;
+  color: #f5f5f7;
   padding: 60px 30px;
   line-height: 1.7;
-  transition: 0.2s ease;
 }
 
 .container {
@@ -58,20 +29,6 @@ body {
   gap: 20px;
 }
 
-button {
-  background: transparent;
-  border: 1px solid var(--muted);
-  color: var(--text);
-  padding: 8px 16px;
-  cursor: pointer;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-button:hover {
-  border-color: var(--accent);
-}
-
 h1 { 
   font-weight: 600; 
   font-size: 2.2rem;
@@ -81,34 +38,34 @@ h1 {
 h2 { 
   margin-top: 70px; 
   font-weight: 500;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #2c2e33;
   padding-bottom: 10px;
 }
 
 h3 {
   font-weight: 500;
   margin-top: 40px;
-  color: var(--accent);
+  color: #ff453a;
 }
 
 .code-box {
   font-family: Menlo, monospace;
-  background: var(--code-bg);
+  background: #0b1a14;
   padding: 20px;
   border-radius: 8px;
   margin: 20px 0;
   white-space: pre;
   overflow-x: auto;
   font-size: 0.95rem;
-  border: 1px solid rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
-.keyword { color: var(--keyword); }
-.type { color: var(--type); }
-.string { color: var(--string); }
-.number { color: var(--number); }
-.comment { color: var(--comment); }
-.muted { color: var(--muted); }
+.keyword { color: #ff453a; }
+.type { color: #4da3ff; }
+.string { color: #30d158; }
+.number { color: #bf5af2; }
+.comment { color: #8b9eb0; }
+.muted { color: #999; }
 
 table {
   width: 100%;
@@ -119,11 +76,11 @@ table {
 
 th {
   text-align: left;
-  background: rgba(128,128,128,0.05);
+  background: rgba(255,255,255,0.04);
 }
 
 td, th {
-  border: 1px solid var(--border);
+  border: 1px solid #2c2e33;
   padding: 12px;
 }
 
@@ -137,20 +94,20 @@ li {
 
 hr {
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid #2c2e33;
   margin: 40px 0;
 }
 
 .highlight {
-  background: rgba(255,69,58,0.1);
+  background: rgba(255,69,58,0.12);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: monospace;
 }
 
 .note {
-  background: rgba(0,122,255,0.1);
-  border-left: 4px solid var(--type);
+  background: rgba(77,163,255,0.08);
+  border-left: 4px solid #4da3ff;
   padding: 20px;
   margin: 30px 0;
   border-radius: 0 8px 8px 0;
@@ -164,27 +121,11 @@ hr {
 }
 
 .card {
-  border: 1px solid var(--border);
+  border: 1px solid #2c2e33;
   border-radius: 8px;
   padding: 20px;
 }
-
 </style>
-
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const saved = localStorage.getItem("theme");
-  if (saved === "dark") document.body.classList.add("dark");
-
-  document.getElementById("theme-toggle").onclick = () => {
-    document.body.classList.toggle("dark");
-    localStorage.setItem(
-      "theme",
-      document.body.classList.contains("dark") ? "dark" : "light"
-    );
-  };
-});
-</script>
 
 </head>
 <body>
@@ -193,7 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <div class="topbar">
   <h1>Go Methods & Receivers â€” Deep Guide</h1>
-  <button id="theme-toggle"> Theme</button>
 </div>
 
 <p class="muted" style="font-size: 1.2rem;">
@@ -209,7 +149,7 @@ In Go, the key distinction lies in the <span class="highlight">receiver</span> â
 
 <div class="grid">
   <div class="card">
-    <h3 style="margin-top: 0; color: var(--type);"> Standalone Function</h3>
+    <h3 style="margin-top: 0; color: #4da3ff;"> Standalone Function</h3>
     <div class="code-box" style="margin: 10px 0;">
 <span class="keyword">func</span> <span class="type">createToken</span>(userID <span class="type">int64</span>) (<span class="type">string</span>, <span class="type">error</span>) {
     <span class="comment">// Called directly</span>
@@ -220,7 +160,7 @@ In Go, the key distinction lies in the <span class="highlight">receiver</span> â
   </div>
 
   <div class="card">
-    <h3 style="margin-top: 0; color: var(--accent);"> Method with Receiver</h3>
+    <h3 style="margin-top: 0; color: #ff453a;"> Method with Receiver</h3>
     <div class="code-box" style="margin: 10px 0;">
 <span class="keyword">func</span> (<span class="type">u User</span>) <span class="type">createToken</span>() (<span class="type">string</span>, <span class="type">error</span>) {
     <span class="comment">// Called on a User instance</span>
@@ -243,7 +183,7 @@ func createToken(u User) string
   Go provides syntax sugar to make the first one feel more object-oriented.
 </div>
 
-<h2>2. What Exactly IS the Receiver? <span style="font-size: 0.9rem; color: var(--muted);">(The "x" in func (x) ...)</span></h2>
+<h2>2. What Exactly IS the Receiver? <span style="font-size: 0.9rem; color: #999;">(The "x" in func (x) ...)</span></h2>
 
 <p>
 The receiver <strong>binds the function to a type</strong>. It tells Go: "this function belongs to this type."
@@ -295,7 +235,7 @@ When you call <code>user1.createToken()</code> and <code>user2.createToken()</co
 
 <h2>3. Two Types of Receivers</h2>
 
-<h3>3.1 Value Receiver <span style="color: var(--type);">(u User)</span></h3>
+<h3>3.1 Value Receiver <span style="color: #4da3ff;">(u User)</span></h3>
 
 <div class="code-box">
 <span class="keyword">func</span> (<span class="type">u User</span>) <span class="type">updateName</span>(newName <span class="type">string</span>) {
@@ -320,7 +260,7 @@ When you call <code>user1.createToken()</code> and <code>user2.createToken()</co
   <tr><td>Nil check possible?</td><td> No (can't be nil)</td></tr>
 </table>
 
-<h3>3.2 Pointer Receiver <span style="color: var(--accent);">(u *User)</span></h3>
+<h3>3.2 Pointer Receiver <span style="color: #ff453a;">(u *User)</span></h3>
 
 <div class="code-box">
 <span class="keyword">func</span> (<span class="type">u *User</span>) <span class="type">updateName</span>(newName <span class="type">string</span>) {

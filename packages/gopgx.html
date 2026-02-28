@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pgx in Production — Complete Guide</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0d0d0f;
+  color: #f5f5f7;
+  padding: 60px 30px;
+  line-height: 1.7;
+}
+
+.container {
+  max-width: 1000px;
+  margin: auto;
+}
+
+.topbar {
+  margin-bottom: 40px;
+}
+
+h1 { 
+  font-weight: 600; 
+  font-size: 2.2rem;
+  margin: 0;
+}
+
+h2 { 
+  margin-top: 70px; 
+  font-weight: 500;
+  border-bottom: 1px solid #2c2e33;
+  padding-bottom: 10px;
+}
+
+h3 {
+  font-weight: 500;
+  margin-top: 40px;
+  color: #ff453a;
+}
+
+.code-box {
+  font-family: Menlo, monospace;
+  background: #0b1a14;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+  white-space: pre;
+  overflow-x: auto;
+  font-size: 0.95rem;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.keyword { color: #ff453a; }
+.type { color: #4da3ff; }
+.string { color: #30d158; }
+.comment { color: #8b9eb0; }
+.muted { color: #999; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 30px 0;
+  font-size: 0.95rem;
+}
+
+td, th {
+  border: 1px solid #2c2e33;
+  padding: 12px;
+}
+
+.note {
+  background: rgba(77,163,255,0.08);
+  border-left: 4px solid #4da3ff;
+  padding: 20px;
+  margin: 30px 0;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div class="topbar">
+  <h1>pgx in Production — Complete Guide</h1>
+</div>
+
+<p class="muted">
+Production-grade usage of github.com/jackc/pgx/v5 for real backend systems.
+</p>
+
+<!-- ========================================================== -->
+<h2>1. Production Connection Pool</h2>
+
+<p>
+In production you always use <span class="type">pgxpool</span>, never a single connection.
+</p>
+
+<div class="code-box">
+package db
+
+import (
+  "context"
+  "github.com/jackc/pgx/v5/pgxpool"
+)
+
+func NewPool(ctx context.Context, url string) (*pgxpool.Pool, error) {
+  config, err := pgxpool.ParseConfig(url)
+  if err != nil {
+    return nil, err
+  }
+
+  config.MaxConns = 20
+  config.MinConns = 5
+
+  return pgxpool.NewWithConfig(ctx, config)
+}
+</div>
+
+<div class="note">
+Connection pool prevents connection exhaustion and handles concurrency.
+</div>
+
+<!-- ========================================================== -->
+<h2>2. Clean Project Structure</h2>
+
+<div class="code-box">
+project/
+  cmd/
+    server/
+      main.go
+  internal/
+    db/
+      pool.go
+      user.go
+</div>
+
+<p>
+Database logic stays inside <span class="type">internal/db</span>.
+</p>
+
+<!-- ========================================================== -->
+<h2>3. Basic Query (Production Pattern)</h2>
+
+<div class="code-box">
+type User struct {
+  ID   int64
+  Name string
+  Age  int
+}
+
+func GetUser(ctx context.Context, db *pgxpool.Pool, id int64) (User, error) {
+  var u User
+
+  err := db.QueryRow(ctx,
+    "SELECT id, name, age FROM users WHERE id=$1",
+    id,
+  ).Scan(&u.ID, &u.Name, &u.Age)
+
+  return u, err
+}
+</div>
+
+<p>
+Always pass context from HTTP layer.
+</p>
+
+<!-- ========================================================== -->
+<h2>4. Insert with RETURNING</h2>
+
+<div class="code-box">
+func CreateUser(ctx context.Context, db *pgxpool.Pool, name string, age int) (User, error) {
+  var u User
+
+  err := db.QueryRow(ctx,
+    "INSERT INTO users (name, age) VALUES ($1,$2)
+     RETURNING id, name, age",
+    name, age,
+  ).Scan(&u.ID, &u.Name, &u.Age)
+
+  return u, err
+}
+</div>
+
+<p>
+Use RETURNING instead of doing separate SELECT.
+</p>
+
+<!-- ========================================================== -->
+<h2>5. Selecting Multiple Rows</h2>
+
+<div class="code-box">
+func ListUsers(ctx context.Context, db *pgxpool.Pool) ([]User, error) {
+  rows, err := db.Query(ctx,
+    "SELECT id, name, age FROM users")
+  if err != nil {
+    return nil, err
+  }
+  defer rows.Close()
+
+  var users []User
+
+  for rows.Next() {
+    var u User
+    if err := rows.Scan(&u.ID, &u.Name, &u.Age); err != nil {
+      return nil, err
+    }
+    users = append(users, u)
+  }
+
+  return users, rows.Err()
+}
+</div>
+
+<p>
+Always:
+</p>
+
+<ul>
+<li>defer rows.Close()</li>
+<li>check rows.Err()</li>
+</ul>
+
+<!-- ========================================================== -->
+<h2>6. Transactions (Safe Pattern)</h2>
+
+<div class="code-box">
+func Transfer(ctx context.Context, db *pgxpool.Pool) error {
+
+  tx, err := db.Begin(ctx)
+  if err != nil {
+    return err
+  }
+  defer tx.Rollback(ctx)
+
+  _, err = tx.Exec(ctx,
+    "UPDATE accounts SET balance = balance - 100 WHERE id=$1", 1)
+  if err != nil {
+    return err
+  }
+
+  _, err = tx.Exec(ctx,
+    "UPDATE accounts SET balance = balance + 100 WHERE id=$1", 2)
+  if err != nil {
+    return err
+  }
+
+  return tx.Commit(ctx)
+}
+</div>
+
+<div class="note">
+Always defer Rollback. Commit only at end.
+</div>
+
+<!-- ========================================================== -->
+<h2>7. Context in HTTP Server</h2>
+
+<div class="code-box">
+func handler(res http.ResponseWriter, req *http.Request) {
+
+  ctx := req.Context()
+
+  user, err := db.GetUser(ctx, pool, 1)
+  if err != nil {
+    res.WriteHeader(500)
+    return
+  }
+
+  json.NewEncoder(res).Encode(user)
+}
+</div>
+
+<p>
+Never create background context inside handlers.
+Use request context.
+</p>
+
+<!-- ========================================================== -->
+<h2>8. Handling Not Found</h2>
+
+<div class="code-box">
+import "github.com/jackc/pgx/v5"
+
+if err == pgx.ErrNoRows {
+  res.WriteHeader(404)
+  return
+}
+</div>
+
+<p>
+Distinguish between:
+</p>
+
+<ul>
+<li>Not found</li>
+<li>Database failure</li>
+</ul>
+
+<!-- ========================================================== -->
+<h2>9. Pool Configuration (Advanced)</h2>
+
+<div class="code-box">
+config.MaxConns = 50
+config.MinConns = 10
+config.MaxConnLifetime = time.Hour
+config.MaxConnIdleTime = 30 * time.Minute
+</div>
+
+<table>
+<tr><th>Setting</th><th>Meaning</th></tr>
+<tr><td>MaxConns</td><td>Maximum open connections</td></tr>
+<tr><td>MinConns</td><td>Warm connections</td></tr>
+<tr><td>MaxConnLifetime</td><td>Recycle connections</td></tr>
+<tr><td>IdleTime</td><td>Close unused connections</td></tr>
+</table>
+
+<!-- ========================================================== -->
+<h2>10. Production Best Practices</h2>
+
+<ul>
+<li>Use pgxpool in servers</li>
+<li>Always pass context</li>
+<li>Keep SQL in repository layer</li>
+<li>Use transactions for atomic operations</li>
+<li>Never ignore rows.Err()</li>
+<li>Use prepared statements only if profiling demands</li>
+<li>Log slow queries</li>
+<li>Keep DB logic separate from HTTP logic</li>
+</ul>
+
+<!-- ========================================================== -->
+<h2>11. Mental Model</h2>
+
+<div class="code-box">
+HTTP → Handler → Service → DB Layer (pgx)
+                        ↓
+                    PostgreSQL
+</div>
+
+<p>
+pgx is thin.  
+You control SQL.  
+No reflection.  
+No ORM magic.  
+Maximum predictability.
+</p>
+
+<hr />
+
+<p class="muted" style="text-align: center;">
+  © Rakshith
+</p>
+
+</div>
+</body>
+</html>

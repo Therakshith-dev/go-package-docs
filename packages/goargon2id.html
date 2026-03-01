@@ -1,637 +1,1180 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Argon2id in Go — Full Code + Deep Explanation (Single File)</title>
-  <style>
-    :root{
-      --bg:#0b0f14;
-      --panel:#0f1620;
-      --panel2:#101b28;
-      --text:#e8eef6;
-      --muted:#a7b6c8;
-      --accent:#7dd3fc;
-      --accent2:#a78bfa;
-      --good:#34d399;
-      --warn:#fbbf24;
-      --bad:#fb7185;
-      --border:rgba(255,255,255,.08);
-      --shadow: 0 12px 40px rgba(0,0,0,.45);
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family:var(--sans);
-      background:
-        radial-gradient(1200px 800px at 30% -10%, rgba(125,211,252,.18), transparent 60%),
-        radial-gradient(900px 700px at 85% 10%, rgba(167,139,250,.16), transparent 55%),
-        var(--bg);
-      color:var(--text);
-      line-height:1.45;
-    }
-    a{color:var(--accent);text-decoration:none}
-    a:hover{text-decoration:underline}
-    .container{max-width:1100px;margin:0 auto;padding:24px}
-    header{
-      position:sticky;top:0;z-index:10;
-      backdrop-filter: blur(10px);
-      background: linear-gradient(to bottom, rgba(11,15,20,.88), rgba(11,15,20,.55));
-      border-bottom: 1px solid var(--border);
-    }
-    .header-inner{
-      max-width:1100px;margin:0 auto;padding:14px 24px;
-      display:flex;align-items:center;justify-content:space-between;gap:12px;
-    }
-    .title{display:flex;flex-direction:column;gap:2px}
-    .title h1{margin:0;font-size:16px;letter-spacing:.2px;font-weight:750}
-    .title p{margin:0;color:var(--muted);font-size:12px}
-    .pillbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .pill{
-      display:inline-flex;align-items:center;gap:8px;
-      padding:8px 10px;border:1px solid var(--border);
-      border-radius:999px;background:rgba(255,255,255,.03);
-      font-size:12px;color:var(--muted)
-    }
-    .pill strong{color:var(--text);font-weight:700}
-    .grid{
-      display:grid;grid-template-columns: 1.2fr .8fr;
-      gap:18px;margin-top:18px;
-    }
-    @media (max-width: 980px){
-      .grid{grid-template-columns:1fr}
-      .header-inner{flex-direction:column;align-items:flex-start}
-      .pillbar{justify-content:flex-start}
-    }
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
-      border:1px solid var(--border);
-      border-radius:16px;
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .card .card-h{
-      padding:14px 16px;border-bottom:1px solid var(--border);
-      background: rgba(255,255,255,.02);
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-    }
-    .card .card-h h2{margin:0;font-size:14px;font-weight:780}
-    .card .card-h .sub{color:var(--muted);font-size:12px}
-    .card .card-b{padding:16px}
-    .kpi{
-      display:grid;grid-template-columns:repeat(3,1fr);
-      gap:10px;
-    }
-    @media(max-width:640px){.kpi{grid-template-columns:1fr}}
-    .kpi .box{
-      padding:12px;border:1px solid var(--border);
-      border-radius:14px;background:rgba(255,255,255,.02)
-    }
-    .kpi .box .lbl{color:var(--muted);font-size:12px}
-    .kpi .box .val{font-family:var(--mono);font-size:13px;margin-top:6px}
-    .note{
-      padding:12px 12px;
-      border:1px solid var(--border);
-      border-left:4px solid var(--accent);
-      background: rgba(125,211,252,.07);
-      border-radius:12px;
-      color:var(--text);
-      margin:12px 0;
-    }
-    .warn{border-left-color: var(--warn);background: rgba(251,191,36,.08)}
-    .danger{border-left-color: var(--bad);background: rgba(251,113,133,.08)}
-    .toc{display:flex;flex-direction:column;gap:8px}
-    .toc a{
-      display:flex;justify-content:space-between;align-items:center;gap:10px;
-      padding:10px 12px;border:1px solid var(--border);border-radius:12px;
-      background: rgba(255,255,255,.02);
-      color:var(--text);
-      transition: transform .12s ease, background .12s ease;
-    }
-    .toc a:hover{background: rgba(255,255,255,.04);transform: translateY(-1px);text-decoration:none}
-    .toc a span{color:var(--muted);font-size:12px}
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Argon2id Password Hashing in Go — Complete Guide</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0b0f14;
+            color: #e8eef6;
+            line-height: 1.6;
+        }
 
-    /* Code area */
-    .codewrap{
-      border:1px solid var(--border);
-      border-radius:14px;
-      overflow:hidden;
-      background: #0a1018;
-    }
-    .codetop{
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-      padding:10px 12px;border-bottom:1px solid var(--border);
-      background: rgba(255,255,255,.02);
-    }
-    .codetop .left{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
-    .dots{display:flex;gap:6px}
-    .dot{width:10px;height:10px;border-radius:99px;opacity:.9}
-    .dot.r{background:#fb7185}
-    .dot.y{background:#fbbf24}
-    .dot.g{background:#34d399}
-    .btns{display:flex;gap:8px;flex-wrap:wrap}
-    button{
-      font-family:var(--sans);
-      border:1px solid var(--border);
-      background: rgba(255,255,255,.03);
-      color:var(--text);
-      padding:8px 10px;border-radius:12px;
-      font-size:12px;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease;
-    }
-    button:hover{background: rgba(255,255,255,.05);transform: translateY(-1px)}
-    button:active{transform: translateY(0px)}
-    pre.code{
-      margin:0;
-      padding:14px 14px;
-      overflow:auto;
-      font-family:var(--mono);
-      font-size:12.6px;
-      line-height:1.55;
-      tab-size:2;
-      white-space:pre;
-      color:#dbe7ff;
-    }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
 
-    .section{margin-top:18px}
-    .section h3{margin:0 0 10px 0;font-size:14px;font-weight:820;letter-spacing:.2px}
-    .muted{color:var(--muted)}
-    details{
-      border:1px solid var(--border);
-      border-radius:14px;
-      background: rgba(255,255,255,.02);
-      overflow:hidden;
-      margin:10px 0;
-    }
-    summary{
-      cursor:pointer;
-      padding:12px 14px;
-      list-style:none;
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-      font-weight:740;
-    }
-    summary::-webkit-details-marker{display:none}
-    details .inner{padding:0 14px 12px 14px;color:var(--text)}
-    .badge{
-      font-family:var(--mono);
-      font-size:11px;
-      padding:4px 8px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      color:var(--muted);
-      background: rgba(255,255,255,.02);
-      white-space:nowrap;
-    }
-    .callout-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media(max-width:720px){.callout-row{grid-template-columns:1fr}}
-    .mini{
-      padding:12px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.02)
-    }
-    .mini .t{font-weight:780;margin-bottom:6px}
-    .hr{height:1px;background:var(--border);margin:14px 0}
-    footer{margin:22px 0 10px 0;color:var(--muted);font-size:12px;text-align:center}
-    .kbd{
-      font-family:var(--mono);
-      font-size:11px;
-      padding:2px 6px;
-      border:1px solid var(--border);
-      border-bottom-color: rgba(255,255,255,.18);
-      border-radius:8px;
-      background: rgba(255,255,255,.03);
-      color:var(--muted);
-    }
-  </style>
+        /* Header */
+        .header {
+            background: #0f1620;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 24px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #a7b6c8;
+            font-size: 1.1rem;
+        }
+
+        .badge-container {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .badge {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            color: #a7b6c8;
+        }
+
+        .badge strong {
+            color: #e8eef6;
+            margin-right: 6px;
+        }
+
+        /* Cards */
+        .card {
+            background: #0f1620;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: rgba(255,255,255,0.03);
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .card-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .card-header .sub {
+            color: #a7b6c8;
+            font-size: 0.95rem;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Code Block */
+        .code-container {
+            background: #0a1018;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .code-header {
+            background: rgba(255,255,255,0.03);
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #a7b6c8;
+            font-size: 0.9rem;
+        }
+
+        .window-dots {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot.red { background: #fb7185; }
+        .dot.yellow { background: #fbbf24; }
+        .dot.green { background: #34d399; }
+
+        .btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #e8eef6;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .btn.small {
+            padding: 4px 12px;
+            font-size: 0.85rem;
+        }
+
+        pre {
+            margin: 0;
+            padding: 20px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #dbe7ff;
+            background: #0a1018;
+            white-space: pre;
+        }
+
+        /* Comments inside code blocks - styled differently */
+        .code-comment {
+            color: #7a8a9f;
+            font-style: italic;
+        }
+
+        /* Info Boxes */
+        .info-box {
+            padding: 20px;
+            border-left: 4px solid #7dd3fc;
+            background: rgba(125,211,252,0.1);
+            border-radius: 8px;
+            margin: 24px 0;
+        }
+
+        .info-box.warning {
+            border-left-color: #fbbf24;
+            background: rgba(251,191,36,0.1);
+        }
+
+        .info-box.danger {
+            border-left-color: #fb7185;
+            background: rgba(251,113,133,0.1);
+        }
+
+        .info-box.success {
+            border-left-color: #34d399;
+            background: rgba(52,211,153,0.1);
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 600px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .metric-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .metric-label {
+            color: #a7b6c8;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        /* Navigation */
+        .nav-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .nav-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #e8eef6;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .nav-link:hover {
+            background: rgba(255,255,255,0.05);
+            text-decoration: none;
+        }
+
+        .nav-link span {
+            color: #a7b6c8;
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 4px;
+        }
+
+        /* Details/Summary */
+        details {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+
+        summary {
+            padding: 16px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        summary::after {
+            content: '▼';
+            font-size: 0.8rem;
+            color: #a7b6c8;
+            transition: transform 0.2s;
+        }
+
+        details[open] summary::after {
+            transform: rotate(180deg);
+        }
+
+        details .content {
+            padding: 0 20px 20px 20px;
+            color: #a7b6c8;
+        }
+
+        /* Example String */
+        .example-container {
+            background: #0a1018;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .example-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .example-content {
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            background: #0a1018;
+            color: #dbe7ff;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Lists */
+        ul, ol {
+            padding-left: 24px;
+            color: #a7b6c8;
+            margin: 16px 0;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        /* Section spacing */
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #e8eef6;
+        }
+
+        .section-title small {
+            font-size: 1rem;
+            color: #a7b6c8;
+            font-weight: normal;
+            margin-left: 10px;
+        }
+
+        /* Divider */
+        hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin: 30px 0;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            color: #a7b6c8;
+            font-size: 0.9rem;
+            padding: 20px 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin-top: 20px;
+        }
+
+        /* Key hint */
+        .key-hint {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px;
+            color: #a7b6c8;
+        }
+
+        /* Parameter boxes */
+        .param-box {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+        }
+
+        .param-label {
+            color: #a7b6c8;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+
+        .param-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .param-desc {
+            color: #a7b6c8;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
+        /* Code explanation blocks */
+        .code-explanation {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 12px;
+            margin: 12px 0;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .code-line {
+            font-family: 'Courier New', monospace;
+            color: #dbe7ff;
+            background: #0a1018;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .code-desc {
+            color: #a7b6c8;
+        }
+    </style>
 </head>
 <body>
-<header>
-  <div class="header-inner">
-    <div class="title">
-      <h1>Argon2id Password Hashing in Go — Full Code + Detailed Explanation</h1>
-      <p>Single HTML file • code is kept as plain text (no HTML injection) • safe to commit</p>
-    </div>
-    <div class="pillbar">
-      <div class="pill"><strong>Algo</strong> Argon2id</div>
-      <div class="pill"><strong>Salt</strong> per-password random</div>
-      <div class="pill"><strong>Compare</strong> constant-time</div>
-      <div class="pill"><strong>Storage</strong> encoded string</div>
-    </div>
-  </div>
-</header>
-
-<div class="container">
-  <div class="grid">
-    <div class="card" id="code">
-      <div class="card-h">
-        <div>
-          <h2>Complete Go code</h2>
-          <div class="sub">
-            Package: <span class="badge">auth</span> • Functions:
-            <span class="badge">HashPassword</span> <span class="badge">VerifyPassword</span>
-          </div>
+    <div class="header">
+        <h1>Argon2id Password Hashing in Go</h1>
+        <p>A complete, production-ready implementation with detailed explanations</p>
+        <div class="badge-container">
+            <span class="badge"><strong>Algorithm</strong> Argon2id</span>
+            <span class="badge"><strong>Salt</strong> crypto/rand</span>
+            <span class="badge"><strong>Comparison</strong> constant-time</span>
+            <span class="badge"><strong>Storage</strong> encoded string</span>
         </div>
-        <div class="btns">
-          <button id="btnCopy">Copy code</button>
-          <button id="btnJumpEncoded">Jump to “encoded”</button>
-        </div>
-      </div>
-
-      <div class="card-b">
-        <div class="codewrap">
-          <div class="codetop">
-            <div class="left">
-              <div class="dots">
-                <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-              </div>
-              <span class="muted">auth/argon2id.go</span>
-            </div>
-            <div class="left">
-              <span class="kbd">Ctrl</span>+<span class="kbd">F</span> <span class="muted">search inside</span>
-            </div>
-          </div>
-
-          <!-- IMPORTANT: This block is filled via textContent, never innerHTML -->
-          <pre class="code" id="codeBlock"></pre>
-        </div>
-
-        <div class="note warn" style="margin-top:14px">
-          <strong>Key idea:</strong> This is <em>hashing</em>, not encryption. You never decrypt passwords. You only recompute and compare.
-        </div>
-
-        <div class="section" id="toc">
-          <h3>What you’ll learn in this page</h3>
-          <div class="callout-row">
-            <div class="mini">
-              <div class="t">1) Why the “encoded” string exists</div>
-              <div class="muted">So you can verify later with the same parameters + same salt.</div>
-            </div>
-            <div class="mini">
-              <div class="t">2) What Base64 is doing</div>
-              <div class="muted">It converts raw bytes into text for storage/logging/JSON.</div>
-            </div>
-          </div>
-          <div class="hr"></div>
-          <div class="toc">
-            <a href="#overview">Overview <span>flow + mental model</span></a>
-            <a href="#salt">Salt <span>what it is (and isn’t)</span></a>
-            <a href="#argon2">Argon2id params <span>memory / iterations / parallelism</span></a>
-            <a href="#encoded">Encoded string <span>format, split, parse</span></a>
-            <a href="#verify">Verification <span>VerifyPassword explained</span></a>
-            <a href="#mistakes">Common mistakes <span>what breaks security</span></a>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <div>
-      <div class="card" id="overview">
-        <div class="card-h">
-          <h2>Overview</h2>
-          <div class="sub">Big picture</div>
-        </div>
-        <div class="card-b">
-          <p class="muted">
-            Store one string that contains everything needed to verify later:
-            algorithm + version + params + salt + hash.
-          </p>
-
-          <div class="kpi">
-            <div class="box">
-              <div class="lbl">Hash function</div>
-              <div class="val">argon2.IDKey(...)</div>
+    <div class="container">
+        <!-- Navigation -->
+        <div class="nav-card">
+            <h3 style="margin-bottom: 10px; color: #e8eef6;">Quick Navigation</h3>
+            <div class="nav-links">
+                <a href="#code" class="nav-link">
+                    Complete Code
+                    <span>Full implementation</span>
+                </a>
+                <a href="#overview" class="nav-link">
+                    Overview
+                    <span>How it works</span>
+                </a>
+                <a href="#salt" class="nav-link">
+                    Salt
+                    <span>What and why</span>
+                </a>
+                <a href="#parameters" class="nav-link">
+                    Parameters
+                    <span>Memory, iterations, parallelism</span>
+                </a>
+                <a href="#format" class="nav-link">
+                    Encoded Format
+                    <span>The stored string</span>
+                </a>
+                <a href="#verify" class="nav-link">
+                    Verification
+                    <span>How login works</span>
+                </a>
+                <a href="#mistakes" class="nav-link">
+                    Common Mistakes
+                    <span>What to avoid</span>
+                </a>
+                <a href="#usage" class="nav-link">
+                    Usage Examples
+                    <span>Registration and login</span>
+                </a>
             </div>
-            <div class="box">
-              <div class="lbl">Salt source</div>
-              <div class="val">crypto/rand.Read</div>
-            </div>
-            <div class="box">
-              <div class="lbl">Comparison</div>
-              <div class="val">subtle.ConstantTimeCompare</div>
-            </div>
-          </div>
-
-          <div class="note" style="margin-top:12px">
-            <strong>Workflow:</strong><br/>
-            Register: password → (salt + Argon2id) → store encoded string<br/>
-            Login: password + encoded string → parse → recompute → constant-time compare
-          </div>
         </div>
-      </div>
 
-      <div class="card" id="salt" style="margin-top:18px">
-        <div class="card-h">
-          <h2>Salt</h2>
-          <div class="sub">Stops precomputation</div>
-        </div>
-        <div class="card-b">
-          <p>
-            A <strong>salt</strong> is random bytes generated per password hash. It is <strong>not secret</strong>.
-            It prevents identical passwords from producing identical hashes and defeats rainbow-table precomputation.
-          </p>
-          <details open>
-            <summary>
-              What <code>rand.Read(salt)</code> does
-              <span class="badge">mutates bytes</span>
-            </summary>
-            <div class="inner">
-              <p class="muted">
-                <code>salt := make([]byte, 16)</code> creates 16 bytes set to 0.
-                <br/><code>rand.Read(salt)</code> fills those bytes with cryptographically secure randomness.
-                The slice length stays 16 — only the contents change.
-              </p>
+        <!-- Complete Code Section -->
+        <div class="card" id="code">
+            <div class="card-header">
+                <h2>Complete Go Implementation</h2>
+                <div class="sub">Package: auth • Functions: HashPassword, VerifyPassword</div>
             </div>
-          </details>
-        </div>
-      </div>
+            <div class="card-body">
+                <div class="code-container">
+                    <div class="code-header">
+                        <div class="file-info">
+                            <span class="window-dots">
+                                <span class="dot red"></span>
+                                <span class="dot yellow"></span>
+                                <span class="dot green"></span>
+                            </span>
+                            <span>auth/argon2id.go</span>
+                        </div>
+                        <div>
+                            <button class="btn small" id="btnCopy">Copy Code</button>
+                            <button class="btn small" id="btnJumpFormat">Jump to Format</button>
+                        </div>
+                    </div>
+                    <pre id="codeBlock"></pre>
+                </div>
 
-      <div class="card" id="argon2" style="margin-top:18px">
-        <div class="card-h">
-          <h2>Argon2id parameters</h2>
-          <div class="sub">What the knobs mean</div>
-        </div>
-        <div class="card-b">
-          <details open>
-            <summary>Memory (<code>m</code>) <span class="badge">KB</span></summary>
-            <div class="inner">
-              <p class="muted">
-                Here: <code>Memory: 64 * 1024</code> → 65536 KB = 64 MB per hash attempt.
-              </p>
+                <div class="info-box warning" style="margin-top: 20px;">
+                    <strong>Key Concept:</strong> This is password hashing, not encryption. Passwords are never decrypted. When a user logs in, you hash their input with the same salt and parameters, then compare the results.
+                </div>
             </div>
-          </details>
-          <details>
-            <summary>Iterations (<code>t</code>) <span class="badge">passes</span></summary>
-            <div class="inner">
-              <p class="muted">
-                Here: <code>Iterations: 1</code>. Increase to slow attackers (but it also slows your server).
-              </p>
-            </div>
-          </details>
-          <details>
-            <summary>Parallelism (<code>p</code>) <span class="badge">lanes</span></summary>
-            <div class="inner">
-              <p class="muted">
-                Here: <code>Parallelism: 4</code>. Controls internal parallel lanes.
-              </p>
-            </div>
-          </details>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="card section" id="encoded">
-    <div class="card-h">
-      <h2>The encoded string (the part you got stuck at)</h2>
-      <div class="sub">Just a container string</div>
-    </div>
-    <div class="card-b">
-      <p>
-        This line builds one string containing algorithm + version + params + salt + hash:
-        <code style="font-family:var(--mono)">$argon2id$v=19$m=...,t=...,p=...$salt$hash</code>
-      </p>
+        <!-- Code Explanation Section (New) -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Line-by-Line Code Explanation</h2>
+                <div class="sub">Understanding what each part does</div>
+            </div>
+            <div class="card-body">
+                <details open>
+                    <summary>HashPassword function breakdown</summary>
+                    <div class="content">
+                        <div class="code-explanation">
+                            <div class="code-line">func generateSalt(length uint32) ([]byte, error) {</div>
+                            <div class="code-desc">Creates random bytes for salt using crypto/rand - ensures each password gets unique salt</div>
+                        </div>
+                        <div class="code-explanation">
+                            <div class="code-line">salt := make([]byte, length)</div>
+                            <div class="code-desc">Allocates a byte slice of specified length (16 bytes default), all zeros</div>
+                        </div>
+                        <div class="code-explanation">
+                            <div class="code-line">rand.Read(salt)</div>
+                            <div class="code-desc">Fills the slice with cryptographically secure random bytes from OS</div>
+                        </div>
+                        <div class="code-explanation">
+                            <div class="code-line">argon2.IDKey(password, salt, iterations, memory, parallelism, keyLength)</div>
+                            <div class="code-desc">Core hashing function - takes all parameters and returns 32-byte hash</div>
+                        </div>
+                        <div class="code-explanation">
+                            <div class="code-line">base64.RawStdEncoding.EncodeToString(salt)</div>
+                            <div class="code-desc">Converts raw salt bytes to text format for storage</div>
+                        </div>
+                        <div class="code-explanation">
+                            <div class="code-line">fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", ...)</div>
+                            <div class="code-desc">Builds the final encoded string with all components separated by $</div>
+                        </div>
+                    </div>
+                </details>
 
-      <div class="codewrap" style="margin-top:10px">
-        <div class="codetop">
-          <div class="left"><span class="muted">Example format</span></div>
-          <div class="btns">
-            <button id="btnCopyExample">Copy example</button>
-          </div>
+                <details>
+                    <summary>VerifyPassword function breakdown</summary>
+                    <div class="content">
+                        <div class="code-explanation">
+                            <div class="code-line">parts := strings.Split(encodedHash, "$")</div>
+                            <div class="code-desc">Splits the stored string into 6 parts: ["", "argon2id", "v=19", "params", "salt", "hash"]</div>
+                        </div>
+                        <div class="code-explanation">
+                            <div class="code-line">if len(parts) != 6 { return false }</div>
+                            <div class="code-desc">Validates format - first part is empty because string starts with $</div>
+                        </div>
+                        <div class="code-explanation">
+                            <div class="code-line">fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &memory, &iterations, &parallelism)</div>
+                            <div class="code-desc">Parses parameters from string like "m=65536,t=1,p=4" into integers</div>
+                        </div>
+                        <div class="code-explanation">
+                            <div class="code-line">base64.RawStdEncoding.DecodeString(parts[4])</div>
+                            <div class="code-desc">Converts base64 salt back to raw bytes for hashing</div>
+                        </div>
+                        <div class="code-explanation">
+                            <div class="code-line">argon2.IDKey(password, salt, iterations, memory, parallelism, uint32(len(hash)))</div>
+                            <div class="code-desc">Recomputes hash using same parameters and salt</div>
+                        </div>
+                        <div class="code-explanation">
+                            <div class="code-line">subtle.ConstantTimeCompare(hash, computedHash)</div>
+                            <div class="code-desc">Constant-time comparison prevents timing attacks</div>
+                        </div>
+                    </div>
+                </details>
+            </div>
         </div>
-        <pre class="code" id="exampleLine"></pre>
-      </div>
 
-      <details open>
-        <summary>How Split works in VerifyPassword <span class="badge">len(parts)=6</span></summary>
-        <div class="inner">
-          <p class="muted">
-            Because the string starts with <code>$</code>, the first element is empty.
-            That’s why the code checks <code>len(parts) != 6</code>.
-          </p>
-          <pre class="code" style="margin-top:10px">Index 0: ""                     (empty because the string starts with $)
+        <!-- Overview Section -->
+        <div class="card" id="overview">
+            <div class="card-header">
+                <h2>Overview</h2>
+                <div class="sub">The big picture of how password hashing works</div>
+            </div>
+            <div class="card-body">
+                <p style="color: #a7b6c8; margin-bottom: 20px;">
+                    Argon2id is the current industry standard for password hashing. It's designed to be 
+                    computationally expensive and memory-hard, making it difficult for attackers to brute force.
+                </p>
+
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">Core Function</div>
+                        <div class="metric-value">argon2.IDKey()</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Random Source</div>
+                        <div class="metric-value">crypto/rand</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Comparison</div>
+                        <div class="metric-value">subtle.ConstantTimeCompare</div>
+                    </div>
+                </div>
+
+                <div class="info-box success">
+                    <strong>Workflow:</strong><br><br>
+                    <strong>Registration:</strong> password → generate random salt → run Argon2id → store encoded string<br>
+                    <strong>Login:</strong> password + encoded string → parse parameters/salt/hash → recompute → compare
+                </div>
+            </div>
+        </div>
+
+        <!-- Salt Section -->
+        <div class="card" id="salt">
+            <div class="card-header">
+                <h2>Salt: What It Is and Why It Matters</h2>
+                <div class="sub">The foundation of secure password storage</div>
+            </div>
+            <div class="card-body">
+                <div class="info-box">
+                    <strong>Definition:</strong> A salt is a cryptographically random string of bytes generated 
+                    uniquely for each password. It is <strong>not secret</strong> and is stored alongside the hash.
+                </div>
+
+                <h3 style="margin: 20px 0 10px 0; font-size: 1.2rem;">Why salts are essential:</h3>
+                <ul>
+                    <li><strong>Prevents rainbow tables:</strong> Precomputed hash tables become useless because each password has a unique salt</li>
+                    <li><strong>Makes identical passwords different:</strong> Two users with the same password get different hashes</li>
+                    <li><strong>Increases attack cost:</strong> Attackers must crack each password individually</li>
+                </ul>
+
+                <details>
+                    <summary>How salt generation works in the code</summary>
+                    <div class="content">
+                        <pre style="margin-top: 10px;">salt := make([]byte, 16)  // Create 16 zero bytes
+_, err := rand.Read(salt)  // Fill with cryptographically secure random bytes</pre>
+                        <p><code>crypto/rand.Read</code> uses the operating system's secure random number generator. On Linux, it reads from <code>/dev/urandom</code>.</p>
+                    </div>
+                </details>
+
+                <div class="info-box warning" style="margin-top: 16px;">
+                    <strong>Never use math/rand for salts!</strong> It's not cryptographically secure. Always use crypto/rand.
+                </div>
+            </div>
+        </div>
+
+        <!-- Parameters Section -->
+        <div class="card" id="parameters">
+            <div class="card-header">
+                <h2>Argon2id Parameters</h2>
+                <div class="sub">The knobs that control security vs. performance</div>
+            </div>
+            <div class="card-body">
+                <p style="color: #a7b6c8; margin-bottom: 20px;">
+                    The default parameters in this implementation balance security and performance for a typical web server.
+                </p>
+
+                <div class="param-box">
+                    <div class="param-label">Memory (m)</div>
+                    <div class="param-value">64 * 1024 = 65,536 KB = 64 MB</div>
+                    <div class="param-desc">How much RAM is used per hash attempt. Higher values make GPU attacks harder.</div>
+                </div>
+
+                <div class="param-box">
+                    <div class="param-label">Iterations (t)</div>
+                    <div class="param-value">1</div>
+                    <div class="param-desc">Number of passes over the memory. More iterations increase computation time.</div>
+                </div>
+
+                <div class="param-box">
+                    <div class="param-label">Parallelism (p)</div>
+                    <div class="param-value">4</div>
+                    <div class="param-desc">Number of parallel threads used. Should not exceed CPU cores.</div>
+                </div>
+
+                <div class="param-box">
+                    <div class="param-label">Salt Length</div>
+                    <div class="param-value">16 bytes (128 bits)</div>
+                    <div class="param-desc">Long enough to guarantee uniqueness. 16 bytes is the standard.</div>
+                </div>
+
+                <div class="param-box">
+                    <div class="param-label">Key Length</div>
+                    <div class="param-value">32 bytes (256 bits)</div>
+                    <div class="param-desc">Length of the final hash. 32 bytes provides 256-bit security.</div>
+                </div>
+
+                <details>
+                    <summary>How to choose your own parameters</summary>
+                    <div class="content">
+                        <p>Good rule of thumb:</p>
+                        <ul>
+                            <li>Start with 64 MB memory, 1 iteration, parallelism = number of CPU cores</li>
+                            <li>Measure how long it takes on your production hardware (target 100-500ms)</li>
+                            <li>Adjust memory upward first, then iterations if needed</li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- Encoded Format Section -->
+        <div class="card" id="format">
+            <div class="card-header">
+                <h2>The Encoded String Format</h2>
+                <div class="sub">What actually gets stored in your database</div>
+            </div>
+            <div class="card-body">
+                <p style="color: #a7b6c8; margin-bottom: 20px;">
+                    Instead of storing separate fields (algorithm, salt, hash, parameters), we store everything in one string.
+                    This is what you save in your <code>users</code> table password column.
+                </p>
+
+                <div class="example-container">
+                    <div class="example-header">
+                        <span>Example encoded string</span>
+                        <button class="btn small" id="btnCopyExample">Copy</button>
+                    </div>
+                    <div class="example-content" id="exampleLine"></div>
+                </div>
+
+                <h3 style="margin: 20px 0 10px 0; font-size: 1.2rem;">Breaking it down:</h3>
+                <p style="color: #a7b6c8;">The string is split by <code>$</code> into 6 parts:</p>
+
+                <div style="background: #0a1018; padding: 16px; border-radius: 8px; margin: 10px 0;">
+                    <pre style="padding: 0;">Index 0: ""                      (empty, from leading $)
 Index 1: "argon2id"              (algorithm)
-Index 2: "v=19"                  (version)
+Index 2: "v=19"                  (Argon2 version)
 Index 3: "m=65536,t=1,p=4"       (parameters)
-Index 4: "&lt;base64 salt&gt;"         (salt in text form)
-Index 5: "&lt;base64 hash&gt;"         (hash in text form)</pre>
+Index 4: "W0tqOWVYMPF+fBQNuBkXEQ" (salt in base64)
+Index 5: "Zk2uXn8Vt0u7kzv2o1cQ..." (hash in base64)</pre>
+                </div>
+
+                <details>
+                    <summary>Why use Base64?</summary>
+                    <div class="content">
+                        <p>Salt and hash are raw bytes (not human-readable). Base64 encodes these bytes into safe ASCII characters that can be:</p>
+                        <ul>
+                            <li>Stored in databases (text columns)</li>
+                            <li>Sent in JSON APIs</li>
+                            <li>Logged without corruption</li>
+                            <li>Copied and pasted reliably</li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
         </div>
-      </details>
 
-      <details>
-        <summary>Why Base64 is used <span class="badge">bytes → text</span></summary>
-        <div class="inner">
-          <p class="muted">
-            Salt/hash are raw bytes. Base64 makes them safe to store as text (DB/JSON/logs). Base64 is not security.
-          </p>
+        <!-- Verification Section -->
+        <div class="card" id="verify">
+            <div class="card-header">
+                <h2>How Password Verification Works</h2>
+                <div class="sub">The login flow step by step</div>
+            </div>
+            <div class="card-body">
+                <p style="color: #a7b6c8; margin-bottom: 20px;">
+                    When a user tries to log in, you have their plaintext password and the encoded string from your database.
+                </p>
+
+                <ol style="font-size: 1.1rem; line-height: 1.8;">
+                    <li><strong>Split</strong> the encoded string by <code>$</code> to get its components</li>
+                    <li><strong>Parse</strong> memory, iterations, and parallelism from the parameters section</li>
+                    <li><strong>Decode</strong> the salt and hash from Base64 back to raw bytes</li>
+                    <li><strong>Recompute</strong> the hash using the provided password + salt + parameters</li>
+                    <li><strong>Compare</strong> the computed hash with the stored hash using constant-time comparison</li>
+                </ol>
+
+                <div class="info-box success" style="margin-top: 20px;">
+                    <strong>Constant-time comparison is crucial:</strong><br>
+                    The code uses <code>subtle.ConstantTimeCompare</code> instead of <code>==</code>. 
+                    This prevents timing attacks where an attacker could measure how early the comparison fails.
+                </div>
+
+                <details>
+                    <summary>What is a timing attack?</summary>
+                    <div class="content">
+                        <p>Regular string comparison (<code>==</code>) stops at the first mismatching byte. This means it takes slightly less time to compare a completely wrong password than one that matches partially. By measuring these tiny timing differences, an attacker could theoretically guess the hash byte by byte.</p>
+                        <p><code>ConstantTimeCompare</code> always takes the same amount of time regardless of where mismatches occur.</p>
+                    </div>
+                </details>
+            </div>
         </div>
-      </details>
-    </div>
-  </div>
 
-  <div class="card section" id="verify">
-    <div class="card-h">
-      <h2>Verification flow</h2>
-      <div class="sub">What happens on login</div>
-    </div>
-    <div class="card-b">
-      <ol class="muted" style="margin:8px 0 0 18px">
-        <li>Split the stored string by <code>$</code></li>
-        <li>Parse <code>m,t,p</code> from the params section</li>
-        <li>Decode Base64 salt + Base64 hash</li>
-        <li>Recompute Argon2id using input password + stored salt + stored params</li>
-        <li>Constant-time compare computed hash with stored hash</li>
-      </ol>
-    </div>
-  </div>
-  <div class="note" style="margin-top:15px">
-  <strong>What this string actually looks like in your database:</strong>
-  <pre class="code" style="margin-top:10px">
-$argon2id$v=19$m=65536,t=1,p=4$Base64SaltHere$Base64HashHere
-  </pre>
-  <p class="muted" style="margin-top:8px">
-    This entire string is what you store in your database password column.
-    It contains:
-  </p>
-  <ul class="muted" style="margin-top:6px; padding-left:18px">
-    <li><strong>argon2id</strong> → algorithm used</li>
-    <li><strong>v=19</strong> → Argon2 version</li>
-    <li><strong>m=65536</strong> → memory cost (64 MB)</li>
-    <li><strong>t=1</strong> → iterations</li>
-    <li><strong>p=4</strong> → parallelism</li>
-    <li><strong>Base64SaltHere</strong> → unique random salt</li>
-    <li><strong>Base64HashHere</strong> → final hash output</li>
-  </ul>
-</div>
+        <!-- Usage Examples Section (New - with verification details) -->
+        <div class="card" id="usage">
+            <div class="card-header">
+                <h2>Usage Examples with Verification</h2>
+                <div class="sub">How to use the code in your application</div>
+            </div>
+            <div class="card-body">
+                <h3 style="margin-bottom: 15px;">Registration Handler</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>handlers/register.go</span>
+                    </div>
+                    <pre>func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+    // Get password from request
+    password := r.FormValue("password")
+    
+    // Hash the password using default parameters
+    hashedPassword, err := auth.HashPassword(password, auth.DefaultParams)
+    if err != nil {
+        http.Error(w, "Error hashing password", http.StatusInternalServerError)
+        return
+    }
+    
+    // Store in database - hashedPassword contains the encoded string
+    // INSERT INTO users (email, password_hash) VALUES (?, ?)
+    // The hashedPassword is what you store in the password_hash column
+    
+    fmt.Fprintf(w, "User registered successfully")
+}</pre>
+                </div>
 
-  <div class="card section" id="mistakes">
-    <div class="card-h">
-      <h2>Common mistakes</h2>
-      <div class="sub">What ruins security</div>
-    </div>
-    <div class="card-b">
-      <div class="note danger">
-        <strong>Never use</strong> <code>math/rand</code> for salts. Use <code>crypto/rand</code>.
-      </div>
-      <ul class="muted" style="margin:10px 0 0 18px">
-        <li>Comparing hashes with <code>==</code> instead of constant-time compare</li>
-        <li>Not storing params (breaks verification after config changes)</li>
-        <li>Using very low memory values (too easy to brute force)</li>
-        <li>Reusing salts</li>
-      </ul>
-    </div>
-  </div>
+                <h3 style="margin: 30px 0 15px 0;">Login Handler with Verification</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>handlers/login.go</span>
+                    </div>
+                    <pre>func LoginHandler(w http.ResponseWriter, r *http.Request) {
+    password := r.FormValue("password")
+    email := r.FormValue("email")
+    
+    // 1. Retrieve the stored hash from database
+    // SELECT password_hash FROM users WHERE email = ?
+    storedHash := "$argon2id$v=19$m=65536,t=1,p=4$W0tqOWVYMPF+fBQNuBkXEQ$Zk2uXn8Vt0u7kzv2o1cQy4m2h2GdGk5lq2y0x0p0b9s"
+    
+    // 2. Verify the password
+    valid, err := auth.VerifyPassword(password, storedHash)
+    if err != nil {
+        // Handle error - maybe invalid hash format
+        http.Error(w, "Error verifying password", http.StatusInternalServerError)
+        return
+    }
+    
+    // 3. Check the result
+    if valid {
+        // Password is correct! Create session, set cookies, etc.
+        fmt.Fprintf(w, "Login successful")
+        
+        // Example: Create a session
+        // session.Set("user_id", userID)
+        // session.Save()
+    } else {
+        // Password is incorrect
+        http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+    }
+}</pre>
+                </div>
 
-  <footer>
-    This page keeps the Go code as plain text (no HTML injection), so it won’t ever show “Go mixed with HTML”.
-  </footer>
-</div>
+                <h3 style="margin: 30px 0 15px 0;">Testing Verification</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>main_test.go</span>
+                    </div>
+                    <pre>func TestPasswordVerification(t *testing.T) {
+    password := "mySecurePassword123"
+    
+    // Hash the password
+    hash, err := auth.HashPassword(password, auth.DefaultParams)
+    if err != nil {
+        t.Fatalf("Error hashing: %v", err)
+    }
+    
+    // Test valid password
+    valid, err := auth.VerifyPassword(password, hash)
+    if err != nil {
+        t.Fatalf("Error verifying: %v", err)
+    }
+    if !valid {
+        t.Error("Password should be valid")
+    }
+    
+    // Test invalid password
+    valid, err = auth.VerifyPassword("wrongPassword", hash)
+    if err != nil {
+        t.Fatalf("Error verifying: %v", err)
+    }
+    if valid {
+        t.Error("Password should be invalid")
+    }
+    
+    // Test with wrong hash format
+    _, err = auth.VerifyPassword(password, "invalid$format")
+    if err == nil {
+        t.Error("Should error on invalid format")
+    }
+}</pre>
+                </div>
 
-<script>
-  // IMPORTANT: We never set innerHTML for code. Only textContent.
-  const GO_CODE = `package auth
+                <div class="info-box success" style="margin-top: 20px;">
+                    <strong>What VerifyPassword returns:</strong><br>
+                    - First return value (bool): true if password matches, false if it doesn't<br>
+                    - Second return value (error): non-nil if the hash format is invalid or decoding fails
+                </div>
+            </div>
+        </div>
+
+        <!-- Common Mistakes Section -->
+        <div class="card" id="mistakes">
+            <div class="card-header">
+                <h2>Common Mistakes to Avoid</h2>
+                <div class="sub">Real-world pitfalls that break security</div>
+            </div>
+            <div class="card-body">
+                <div class="info-box danger">
+                    <strong>Never use math/rand for salts</strong> - Always use crypto/rand
+                </div>
+
+                <div class="info-box danger">
+                    <strong>Never compare with ==</strong> - Always use ConstantTimeCompare
+                </div>
+
+                <div class="info-box danger">
+                    <strong>Never hardcode parameters</strong> - Store them in the encoded string
+                </div>
+
+                <div class="info-box danger">
+                    <strong>Never reuse salts</strong> - Each password needs its own unique salt
+                </div>
+
+                <div class="info-box danger">
+                    <strong>Never use weak memory values</strong> - 64 MB is the recommended minimum
+                </div>
+
+                <div class="info-box danger">
+                    <strong>Never store raw bytes in database</strong> - Always use the encoded string format
+                </div>
+
+                <h3 style="margin: 20px 0 10px 0; font-size: 1.2rem;">Additional pitfalls:</h3>
+                <ul>
+                    <li><strong>Changing parameters without migration planning</strong> - Old hashes become unverifiable</li>
+                    <li><strong>Setting iterations too high</strong> - Can DOS your own server under load</li>
+                    <li><strong>Setting iterations too low</strong> - Makes brute-forcing easier</li>
+                    <li><strong>Using the wrong Argon2 variant</strong> - Argon2id is recommended for password hashing</li>
+                    <li><strong>Not validating password length</strong> - Very long passwords can cause DoS (limit to 72-128 bytes)</li>
+                    <li><strong>Ignoring the error from VerifyPassword</strong> - Always check both return values</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Production Usage Section -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Using This in Production</h2>
+                <div class="sub">Practical advice for real applications</div>
+            </div>
+            <div class="card-body">
+                <div class="param-box">
+                    <strong>Store the encoded string in your users table:</strong>
+                    <pre style="margin-top: 10px;">CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL  -- This is where the encoded string goes
+);</pre>
+                </div>
+
+                <div class="param-box">
+                    <strong>Environment variables for configuration:</strong>
+                    <pre style="margin-top: 10px;">// config.go
+var HashParams = &auth.Params{
+    Memory:      getEnvAsUint32("HASH_MEMORY", 64*1024),
+    Iterations:  getEnvAsUint32("HASH_ITERATIONS", 1),
+    Parallelism: getEnvAsUint8("HASH_PARALLELISM", 4),
+    SaltLength:  16,
+    KeyLength:   32,
+}</pre>
+                </div>
+
+                <div class="info-box warning" style="margin-top: 20px;">
+                    <strong>Important:</strong> This implementation uses <code>golang.org/x/crypto/argon2</code>. 
+                    Make sure to add it to your go.mod:
+                    <pre style="margin-top: 10px;">go get golang.org/x/crypto/argon2</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>© Rakshith</p>
+        </div>
+    </div>
+
+    <script>
+        // The complete Go code with explanatory comments
+        const GO_CODE = `package auth
 
 import (
-\t"crypto/rand"
-\t"crypto/subtle"
-\t"encoding/base64"
-\t"errors"
-\t"fmt"
-\t"strings"
+    "crypto/rand"
+    "crypto/subtle"
+    "encoding/base64"
+    "errors"
+    "fmt"
+    "strings"
 
-\t"golang.org/x/crypto/argon2"
+    "golang.org/x/crypto/argon2"
 )
 
+// Params represents the configuration parameters for Argon2id hashing
 type Params struct {
-\tMemory      uint32
-\tIterations  uint32
-\tParallelism uint8
-\tSaltLength  uint32
-\tKeyLength   uint32
+    Memory      uint32  // Memory usage in KB
+    Iterations  uint32  // Number of iterations (time cost)
+    Parallelism uint8   // Number of parallel threads
+    SaltLength  uint32  // Length of random salt in bytes
+    KeyLength   uint32  // Length of generated hash in bytes
 }
 
+// DefaultParams provides recommended starting values
 var DefaultParams = &Params{
-\tMemory:      64 * 1024, // 64 MB
-\tIterations:  1,
-\tParallelism: 4,
-\tSaltLength:  16,
-\tKeyLength:   32,
+    Memory:      64 * 1024, // 64 MB RAM usage
+    Iterations:  1,         // Single pass (adjust based on your hardware)
+    Parallelism: 4,         // 4 parallel threads
+    SaltLength:  16,        // 128-bit salt
+    KeyLength:   32,        // 256-bit hash output
 }
 
+// generateSalt creates cryptographically secure random bytes for salting
 func generateSalt(length uint32) ([]byte, error) {
-\tsalt := make([]byte, length)
-\t_, err := rand.Read(salt)
-\tif err != nil {
-\t\treturn nil, err
-\t}
-\treturn salt, nil
+    salt := make([]byte, length)
+    _, err := rand.Read(salt)
+    if err != nil {
+        return nil, err
+    }
+    return salt, nil
 }
 
+// HashPassword takes a plaintext password and returns an encoded hash string
+// The encoded string contains all parameters, salt, and hash for future verification
 func HashPassword(password string, p *Params) (string, error) {
-\tsalt, err := generateSalt(p.SaltLength)
-\tif err != nil {
-\t\treturn "", err
-\t}
+    // Generate a unique salt for this password
+    salt, err := generateSalt(p.SaltLength)
+    if err != nil {
+        return "", err
+    }
 
-\thash := argon2.IDKey(
-\t\t[]byte(password),
-\t\tsalt,
-\t\tp.Iterations,
-\t\tp.Memory,
-\t\tp.Parallelism,
-\t\tp.KeyLength,
-\t)
+    // Run Argon2id to create the hash
+    hash := argon2.IDKey(
+        []byte(password),
+        salt,
+        p.Iterations,
+        p.Memory,
+        p.Parallelism,
+        p.KeyLength,
+    )
 
-\tb64Salt := base64.RawStdEncoding.EncodeToString(salt)
-\tb64Hash := base64.RawStdEncoding.EncodeToString(hash)
+    // Encode salt and hash as base64 for safe storage
+    b64Salt := base64.RawStdEncoding.EncodeToString(salt)
+    b64Hash := base64.RawStdEncoding.EncodeToString(hash)
 
-\tencoded := fmt.Sprintf(
-\t\t"$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
-\t\tp.Memory,
-\t\tp.Iterations,
-\t\tp.Parallelism,
-\t\tb64Salt,
-\t\tb64Hash,
-\t)
+    // Format: $argon2id$v=19$m=memory,t=iterations,p=parallelism$salt$hash
+    encoded := fmt.Sprintf(
+        "$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
+        p.Memory,
+        p.Iterations,
+        p.Parallelism,
+        b64Salt,
+        b64Hash,
+    )
 
-\treturn encoded, nil
+    return encoded, nil
 }
 
+// VerifyPassword checks if a password matches an encoded hash
+// Returns true if password is correct, false otherwise
 func VerifyPassword(password, encodedHash string) (bool, error) {
-\tparts := strings.Split(encodedHash, "$")
-\tif len(parts) != 6 {
-\t\treturn false, errors.New("invalid hash format")
-\t}
+    // Split the encoded string into its components
+    parts := strings.Split(encodedHash, "$")
+    if len(parts) != 6 {
+        return false, errors.New("invalid hash format: expected 6 parts")
+    }
 
-\tvar memory uint32
-\tvar iterations uint32
-\tvar parallelism uint8
+    // Parse parameters from the third part (index 3 because first is empty)
+    var memory uint32
+    var iterations uint32
+    var parallelism uint8
 
-\t_, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &memory, &iterations, &parallelism)
-\tif err != nil {
-\t\treturn false, err
-\t}
+    _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &memory, &iterations, &parallelism)
+    if err != nil {
+        return false, fmt.Errorf("failed to parse parameters: %v", err)
+    }
 
-\tsalt, err := base64.RawStdEncoding.DecodeString(parts[4])
-\tif err != nil {
-\t\treturn false, err
-\t}
+    // Decode the salt from base64
+    salt, err := base64.RawStdEncoding.DecodeString(parts[4])
+    if err != nil {
+        return false, fmt.Errorf("failed to decode salt: %v", err)
+    }
 
-\thash, err := base64.RawStdEncoding.DecodeString(parts[5])
-\tif err != nil {
-\t\treturn false, err
-\t}
+    // Decode the hash from base64
+    hash, err := base64.RawStdEncoding.DecodeString(parts[5])
+    if err != nil {
+        return false, fmt.Errorf("failed to decode hash: %v", err)
+    }
 
-\tcomputedHash := argon2.IDKey(
-\t\t[]byte(password),
-\t\tsalt,
-\t\titerations,
-\t\tmemory,
-\t\tparallelism,
-\t\tuint32(len(hash)),
-\t)
+    // Recompute the hash using the provided password and stored parameters
+    computedHash := argon2.IDKey(
+        []byte(password),
+        salt,
+        iterations,
+        memory,
+        parallelism,
+        uint32(len(hash)),
+    )
 
-\tif subtle.ConstantTimeCompare(hash, computedHash) == 1 {
-\t\treturn true, nil
-\t}
+    // Constant-time comparison prevents timing attacks
+    if subtle.ConstantTimeCompare(hash, computedHash) == 1 {
+        return true, nil
+    }
 
-\treturn false, nil
+    return false, nil
 }`;
 
-  const codeBlock = document.getElementById("codeBlock");
-  codeBlock.textContent = GO_CODE;
+        const EXAMPLE_STRING = `$argon2id$v=19$m=65536,t=1,p=4$W0tqOWVYMPF+fBQNuBkXEQ$Zk2uXn8Vt0u7kzv2o1cQy4m2h2GdGk5lq2y0x0p0b9s`;
 
-  const exampleLine = document.getElementById("exampleLine");
-  exampleLine.textContent = `$argon2id$v=19$m=65536,t=1,p=4$W0tqOWVYMPF+fBQNuBkXEQ$Zk2uXn8Vt0u7kzv2o1cQy4m2h2GdGk5lq2y0x0p0b9s`;
+        // Set code and example
+        document.getElementById('codeBlock').textContent = GO_CODE;
+        document.getElementById('exampleLine').textContent = EXAMPLE_STRING;
 
-  function flash(btn, text){
-    const old = btn.textContent;
-    btn.textContent = text;
-    setTimeout(()=>btn.textContent = old, 900);
-  }
+        // Copy handlers
+        document.getElementById('btnCopy').addEventListener('click', async function() {
+            try {
+                await navigator.clipboard.writeText(GO_CODE);
+                const originalText = this.textContent;
+                this.textContent = 'Copied!';
+                setTimeout(() => this.textContent = originalText, 1000);
+            } catch (err) {
+                alert('Failed to copy code');
+            }
+        });
 
-  document.getElementById("btnCopy").addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(GO_CODE);
-      flash(document.getElementById("btnCopy"), "Copied");
-    } catch {
-      alert("Copy failed (clipboard blocked by browser).");
-    }
-  });
+        document.getElementById('btnCopyExample').addEventListener('click', async function() {
+            try {
+                await navigator.clipboard.writeText(EXAMPLE_STRING);
+                const originalText = this.textContent;
+                this.textContent = 'Copied!';
+                setTimeout(() => this.textContent = originalText, 1000);
+            } catch (err) {
+                alert('Failed to copy example');
+            }
+        });
 
-  document.getElementById("btnCopyExample").addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(exampleLine.textContent);
-      flash(document.getElementById("btnCopyExample"), "Copied");
-    } catch {
-      alert("Copy failed (clipboard blocked by browser).");
-    }
-  });
+        document.getElementById('btnJumpFormat').addEventListener('click', function() {
+            document.getElementById('format').scrollIntoView({ behavior: 'smooth' });
+        });
 
-  document.getElementById("btnJumpEncoded").addEventListener("click", () => {
-    location.hash = "#encoded";
-  });
-</script>
+        // Smooth scroll for all anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
 </body>
 </html>

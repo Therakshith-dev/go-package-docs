@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT in Go: A Complete Explanation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .code-block {
+            background: #f4f4f4;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border-radius: 0 5px 5px 0;
+        }
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .component {
+            background: #e8f4f8;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Understanding JWT in Go: A Complete Guide</h1>
+
+    <div class="note">
+        <strong>Before we begin:</strong> This guide explains every line of the JWT code above. 
+        No oversimplification, no unnecessary complexity - just a clear explanation of how JWT works in practice.
+    </div>
+
+    <h2>What is JWT?</h2>
+    <p>JWT (JSON Web Token) is a string that consists of three parts separated by dots:</p>
+    <div class="code-block">
+        header.payload.signature
+    </div>
+    <p>When you run the code above, the generated token will look something like this:</p>
+    <div class="code-block">
+        eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20iLCJleHAiOjE3MDkzNDIwMDAsInVzZXJfaWQiOjQyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+    </div>
+
+    <h2>The Three Parts Explained</h2>
+    
+    <div class="component">
+        <h3>1. Header (First Part)</h3>
+        <p>Contains metadata about the token - which algorithm was used to sign it and what type of token it is.</p>
+        <p><strong>In our code:</strong> <code>jwt.SigningMethodHS256</code> specifies HMAC-SHA256 as the signing algorithm.</p>
+    </div>
+
+    <div class="component">
+        <h3>2. Payload (Second Part)</h3>
+        <p>Contains the claims - the actual data you want to store. In our code:</p>
+        <ul>
+            <li><code>"user_id": 42</code> - The user identifier</li>
+            <li><code>"email": "user@example.com"</code> - User's email</li>
+            <li><code>"exp": time.Now().Add(time.Hour).Unix()</code> - Expiration timestamp</li>
+        </ul>
+    </div>
+
+    <div class="component">
+        <h3>3. Signature (Third Part)</h3>
+        <p>Created by taking the header + payload + secret key and running them through a cryptographic function. This ensures the token hasn't been tampered with.</p>
+    </div>
+
+    <h2>Line-by-Line Explanation</h2>
+
+    <h3>Package and Imports</h3>
+    <div class="code-block">
+package main
+
+import (
+    "fmt"
+    "time"
+    "github.com/golang-jwt/jwt/v5"
+)
+    </div>
+    <p><strong>fmt:</strong> For printing output<br>
+    <strong>time:</strong> For working with timestamps (like token expiration)<br>
+    <strong>jwt/v5:</strong> The JWT library that does all the heavy lifting</p>
+
+    <h3>Creating a Token</h3>
+    <div class="code-block">
+secret := []byte("my-super-secret-key")
+    </div>
+    <p>The secret key is converted to a byte slice. This key is used for both signing and verifying tokens. In production, this should be stored in an environment variable, not hardcoded.</p>
+
+    <div class="code-block">
+token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+    "user_id": 42,
+    "email":   "user@example.com",
+    "exp":     time.Now().Add(time.Hour).Unix(),
+})
+    </div>
+    <p><strong>jwt.NewWithClaims:</strong> Creates a new token<br>
+    <strong>jwt.SigningMethodHS256:</strong> Specifies HMAC-SHA256 as the signing algorithm<br>
+    <strong>jwt.MapClaims:</strong> A map type that holds the claims (data)<br>
+    <strong>exp:</strong> Standard claim for expiration time. <code>time.Now().Add(time.Hour).Unix()</code> sets expiration to 1 hour from now</p>
+
+    <div class="code-block">
+tokenString, _ := token.SignedString(secret)
+    </div>
+    <p>This signs the token with our secret key and produces the final JWT string. The underscore ignores any potential error (though in production you should handle it).</p>
+
+    <h3>Verifying a Token</h3>
+    <div class="code-block">
+parsedToken, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+    return secret, nil
+})
+    </div>
+    <p><strong>jwt.Parse:</strong> Takes a token string and a key function. The key function returns the secret key used for verification.<br>
+    The library automatically:</p>
+    <ul>
+        <li>Splits the token into its three parts</li>
+        <li>Recreates the signature using the header, payload, and your secret</li>
+        <li>Compares it with the signature in the token</li>
+        <li>Checks if the token has expired</li>
+    </ul>
+
+    <h3>Using the Claims</h3>
+    <div class="code-block">
+if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok && parsedToken.Valid {
+    fmt.Println("Token verified!")
+    fmt.Println("User ID:", claims["user_id"])
+    fmt.Println("Email:", claims["email"])
+    fmt.Println("Expires:", time.Unix(int64(claims["exp"].(float64)), 0))
+}
+    </div>
+    <p>This type assertion converts the claims back to MapClaims so we can access the data. Note that numeric values from JSON are returned as float64, hence the conversion to int64 for the timestamp.</p>
+
+    <h2>What Happens Step by Step</h2>
+    <table>
+        <tr>
+            <th>Step</th>
+            <th>What the Code Does</th>
+            <th>What JWT Does Internally</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>Create claims with user data</td>
+            <td>Converts the map to JSON</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>Call SignedString with secret</td>
+            <td>Base64url encodes header + payload, then creates signature using HMAC-SHA256</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>Parse token with same secret</td>
+            <td>Decodes the token, recreates signature, compares, checks expiration</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td>Access claims if valid</td>
+            <td>Returns the decoded JSON data as a map</td>
+        </tr>
+    </table>
+
+    <h2>Common Claims You'll Use</h2>
+    <table>
+        <tr>
+            <th>Claim</th>
+            <th>Purpose</th>
+            <th>Example</th>
+        </tr>
+        <tr>
+            <td>exp</td>
+            <td>Expiration time</td>
+            <td>time.Now().Add(time.Hour).Unix()</td>
+        </tr>
+        <tr>
+            <td>iat</td>
+            <td>Issued at</td>
+            <td>time.Now().Unix()</td>
+        </tr>
+        <tr>
+            <td>sub</td>
+            <td>Subject (usually user ID)</td>
+            <td>"user_id": 42</td>
+        </tr>
+        <tr>
+            <td>Custom data</td>
+            <td>Your app-specific data</td>
+            <td>"role": "admin"</td>
+        </tr>
+    </table>
+
+    <h2>What You Can Do With This</h2>
+    <ul>
+        <li><strong>Authentication:</strong> Generate token when user logs in, verify on subsequent requests</li>
+        <li><strong>Stateless sessions:</strong> No need to store session data in a database</li>
+        <li><strong>Pass data between services:</strong> The token contains all needed user information</li>
+        <li><strong>API security:</strong> Protect endpoints by requiring valid tokens</li>
+    </ul>
+
+    <div class="note">
+        <strong>Important Security Notes:</strong>
+        <ul>
+            <li>Never hardcode secrets - use environment variables</li>
+            <li>Always set expiration times</li>
+            <li>Use HTTPS in production</li>
+            <li>Keep token payload small (it's sent with every request)</li>
+            <li>Don't store sensitive data (like passwords) in tokens</li>
+        </ul>
+    </div>
+
+    <h2>The Complete Picture</h2>
+    <p>The code you wrote does three fundamental operations that cover 90% of JWT usage:</p>
+    <ol>
+        <li><strong>Creation:</strong> Packing data into a signed, secure token</li>
+        <li><strong>Verification:</strong> Ensuring the token hasn't been tampered with and isn't expired</li>
+        <li><strong>Extraction:</strong> Getting the original data back out</li>
+    </ol>
+    <p>Everything else you'll do with JWT (HTTP middleware, refresh tokens, etc.) builds on these three operations.</p>
+</body>
+</html>
